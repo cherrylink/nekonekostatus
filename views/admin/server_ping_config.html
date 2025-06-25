@@ -1,0 +1,211 @@
+{% set title = "服务器线路监测配置" %}
+{%set admin = true%}
+{% extends "../base.html" %}
+
+{% block content %}
+<div class="mdui-card mt">
+    <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title mdui-text-truncate">{{server.name}} - 线路监测配置</div>
+        <div class="mdui-card-primary-subtitle">配置此服务器要监测的网络目标</div>
+    </div>
+    <div class="mdui-card-menu">
+        <button class="mdui-btn mdui-btn-icon mdui-color-blue mdui-text-color-white" onclick="syncConfig()" mdui-tooltip="{content:'同步配置到Agent'}">
+            <i class="mdui-icon material-icons">sync</i>
+        </button>
+    </div>
+    <div class="mdui-card-content">
+        <form id="configForm">
+            <div class="mdui-table-fluid">
+                <table class="mdui-table mdui-table-hoverable">
+                    <thead>
+                        <tr>
+                            <th>启用</th>
+                            <th>目标名称</th>
+                            <th>地址</th>
+                            <th>端口</th>
+                            <th>采集间隔(秒)</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {%for target in allTargets%}
+                        {%set config = configs.find(c => c.target_id == target.id)%}
+                        <tr>
+                            <td>
+                                <label class="mdui-switch">
+                                    <input type="checkbox" name="enabled_{{target.id}}" {%if config and config.enabled%}checked{%endif%}/>
+                                    <i class="mdui-switch-icon"></i>
+                                </label>
+                            </td>
+                            <td>
+                                <strong>{{target.name}}</strong>
+                                {%if target.type == 'global'%}
+                                <span class="mdui-chip mdui-chip-dense">
+                                    <span class="mdui-chip-icon mdui-color-blue"><i class="mdui-icon material-icons">public</i></span>
+                                    <span class="mdui-chip-title">全局</span>
+                                </span>
+                                {%endif%}
+                            </td>
+                            <td>{{target.address}}</td>
+                            <td>{{target.port}}</td>
+                            <td>
+                                <div class="mdui-textfield mdui-textfield-dense">
+                                    <input class="mdui-textfield-input" type="number" name="interval_{{target.id}}" 
+                                           value="{{config.interval_seconds if config else 30}}" min="10" max="300"/>
+                                </div>
+                            </td>
+                            <td>
+                                {%if config%}
+                                <span class="mdui-chip mdui-chip-dense">
+                                    <span class="mdui-chip-icon mdui-color-green"><i class="mdui-icon material-icons">check_circle</i></span>
+                                    <span class="mdui-chip-title">已配置</span>
+                                </span>
+                                {%else%}
+                                <span class="mdui-chip mdui-chip-dense">
+                                    <span class="mdui-chip-icon mdui-color-grey"><i class="mdui-icon material-icons">radio_button_unchecked</i></span>
+                                    <span class="mdui-chip-title">未配置</span>
+                                </span>
+                                {%endif%}
+                            </td>
+                        </tr>
+                        {%endfor%}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 16px;">
+                <button type="button" class="mdui-btn mdui-color-theme-accent mdui-text-color-white" onclick="saveConfig()">
+                    <i class="mdui-icon material-icons">save</i>
+                    保存配置
+                </button>
+                <button type="button" class="mdui-btn" onclick="window.close()">
+                    <i class="mdui-icon material-icons">close</i>
+                    关闭
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{%if configs.length > 0%}
+<div class="mdui-card mt">
+    <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title">监测数据预览</div>
+        <div class="mdui-card-primary-subtitle">最近的监测结果</div>
+    </div>
+    <div class="mdui-card-content">
+        <div id="pingDataPreview">
+            <p>正在加载数据...</p>
+        </div>
+    </div>
+</div>
+{%endif%}
+{%endblock%}
+
+{%block js%}
+<script>
+const serverId = '{{server.sid}}';
+
+async function saveConfig() {
+    const form = document.getElementById('configForm');
+    const formData = new FormData(form);
+    
+    // 构建配置数组
+    const configs = [];
+    {%for target in allTargets%}
+    const enabled_{{target.id}} = formData.get('enabled_{{target.id}}') === 'on';
+    const interval_{{target.id}} = parseInt(formData.get('interval_{{target.id}}')) || 30;
+    
+    configs.push({
+        target_id: {{target.id}},
+        enabled: enabled_{{target.id}},
+        interval_seconds: interval_{{target.id}}
+    });
+    {%endfor%}
+    
+    startloading();
+    
+    try {
+        const response = await fetch(`/admin/servers/${serverId}/ping-config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ configs })
+        });
+        
+        const result = await response.json();
+        endloading();
+        
+        if (result.status === 1) {
+            mdui.snackbar({ message: '配置保存成功' });
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mdui.snackbar({ message: result.data || '保存失败' });
+        }
+    } catch (e) {
+        endloading();
+        mdui.snackbar({ message: '网络错误' });
+    }
+}
+
+async function syncConfig() {
+    if (!confirm('确定要将配置同步到Agent吗？这将重启Agent服务。')) return;
+    
+    startloading();
+    
+    try {
+        const response = await fetch(`/admin/servers/${serverId}/sync-ping`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        endloading();
+        
+        if (result.status === 1) {
+            mdui.snackbar({ message: result.data || '同步成功' });
+        } else {
+            mdui.snackbar({ message: result.data || '同步失败' });
+        }
+    } catch (e) {
+        endloading();
+        mdui.snackbar({ message: '网络错误' });
+    }
+}
+
+// 加载监测数据预览
+async function loadDataPreview() {
+    try {
+        const response = await fetch(`/api/servers/${serverId}/ping-data?hours=1`);
+        const result = await response.json();
+        
+        if (result.status === 1 && result.data.length > 0) {
+            let html = '<div class="mdui-table-fluid"><table class="mdui-table mdui-table-dense">';
+            html += '<thead><tr><th>目标</th><th>IP版本</th><th>丢包率</th><th>平均延迟</th><th>时间</th></tr></thead><tbody>';
+            
+            result.data.slice(0, 10).forEach(item => {
+                html += `<tr>
+                    <td>${item.name}</td>
+                    <td>IPv${item.ip_version}</td>
+                    <td>${(item.packet_loss * 100).toFixed(1)}%</td>
+                    <td>${item.rtt_avg ? item.rtt_avg.toFixed(1) + 'ms' : '-'}</td>
+                    <td>${new Date(item.timestamp).toLocaleString()}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            document.getElementById('pingDataPreview').innerHTML = html;
+        } else {
+            document.getElementById('pingDataPreview').innerHTML = '<p>暂无监测数据</p>';
+        }
+    } catch (e) {
+        document.getElementById('pingDataPreview').innerHTML = '<p>加载数据失败</p>';
+    }
+}
+
+// 页面加载完成后加载数据预览
+window.addEventListener('load', () => {
+    {%if configs.length > 0%}
+    loadDataPreview();
+    {%endif%}
+});
+</script>
+{%endblock%}

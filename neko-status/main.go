@@ -73,6 +73,9 @@ func main() {
 	
 	go walled.MonitorWalled()
 	
+	// 初始化并启动ping监测
+	initPingMonitor()
+	
 	// 如果配置了URL且为主动模式，启动推送
 	if Config.Url != "" {
 		go startPushMode()

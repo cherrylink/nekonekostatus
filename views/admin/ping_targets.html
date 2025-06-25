@@ -1,0 +1,202 @@
+{% set title = "线路监测目标" %}
+{%set admin = true%}
+{% extends "../base.html" %}
+
+{% block content %}
+<div class="mdui-card mt">
+    <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title mdui-text-truncate">线路监测目标管理</div>
+        <div class="mdui-card-primary-subtitle">管理全局监测目标，服务器可选择监测这些目标的网络质量</div>
+    </div>
+    <div class="mdui-card-menu">
+        <button class="mdui-btn mdui-btn-icon mdui-color-green mdui-text-color-white" onclick="openAddDialog()" mdui-tooltip="{content:'添加新目标'}">
+            <i class="mdui-icon material-icons">add</i>
+        </button>
+    </div>
+    <div class="mdui-card-content">
+        <div class="mdui-table-fluid">
+            <table class="mdui-table mdui-table-hoverable">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>地址</th>
+                        <th>端口</th>
+                        <th>类型</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {%for target in targets%}
+                    <tr>
+                        <td>{{target.name}}</td>
+                        <td>{{target.address}}</td>
+                        <td>{{target.port}}</td>
+                        <td>
+                            {%if target.type == 'global'%}
+                            <span class="mdui-chip">
+                                <span class="mdui-chip-icon mdui-color-blue"><i class="mdui-icon material-icons">public</i></span>
+                                <span class="mdui-chip-title">全局</span>
+                            </span>
+                            {%else%}
+                            <span class="mdui-chip">
+                                <span class="mdui-chip-icon mdui-color-grey"><i class="mdui-icon material-icons">computer</i></span>
+                                <span class="mdui-chip-title">自定义</span>
+                            </span>
+                            {%endif%}
+                        </td>
+                        <td>{{new Date(target.created_at).toLocaleString()}}</td>
+                        <td>
+                            <button class="mdui-btn mdui-btn-icon" onclick="editTarget({{target.id}})" mdui-tooltip="{content:'编辑'}">
+                                <i class="mdui-icon material-icons">edit</i>
+                            </button>
+                            <button class="mdui-btn mdui-btn-icon mdui-color-red mdui-text-color-white" onclick="deleteTarget({{target.id}})" mdui-tooltip="{content:'删除'}">
+                                <i class="mdui-icon material-icons">delete</i>
+                            </button>
+                        </td>
+                    </tr>
+                    {%endfor%}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑对话框 -->
+<div class="mdui-dialog" id="targetDialog">
+    <div class="mdui-dialog-title" id="dialogTitle">添加监测目标</div>
+    <div class="mdui-dialog-content">
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">目标名称</label>
+            <input class="mdui-textfield-input" type="text" id="targetName" placeholder="如: Cloudflare"/>
+        </div>
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">目标地址</label>
+            <input class="mdui-textfield-input" type="text" id="targetAddress" placeholder="如: 1.1.1.1 或 cloudflare.com"/>
+        </div>
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">端口</label>
+            <input class="mdui-textfield-input" type="number" id="targetPort" value="80"/>
+        </div>
+        <div class="mdui-textfield">
+            <label class="mdui-textfield-label">类型</label>
+            <select class="mdui-textfield-input" id="targetType">
+                <option value="global">全局目标</option>
+                <option value="custom">自定义目标</option>
+            </select>
+        </div>
+    </div>
+    <div class="mdui-dialog-actions">
+        <button class="mdui-btn mdui-ripple" mdui-dialog-close>取消</button>
+        <button class="mdui-btn mdui-ripple mdui-color-theme-accent mdui-text-color-white" onclick="saveTarget()">保存</button>
+    </div>
+</div>
+{%endblock%}
+
+{%block js%}
+<script>
+var targetDialog = new mdui.Dialog('#targetDialog');
+var currentEditId = null;
+
+async function openAddDialog() {
+    currentEditId = null;
+    document.getElementById('dialogTitle').textContent = '添加监测目标';
+    document.getElementById('targetName').value = '';
+    document.getElementById('targetAddress').value = '';
+    document.getElementById('targetPort').value = '80';
+    document.getElementById('targetType').value = 'global';
+    targetDialog.open();
+}
+
+async function editTarget(id) {
+    try {
+        const response = await fetch(`/api/ping-targets`);
+        const result = await response.json();
+        if (result.status === 1) {
+            const target = result.data.find(t => t.id === id);
+            if (target) {
+                currentEditId = id;
+                document.getElementById('dialogTitle').textContent = '编辑监测目标';
+                document.getElementById('targetName').value = target.name;
+                document.getElementById('targetAddress').value = target.address;
+                document.getElementById('targetPort').value = target.port;
+                document.getElementById('targetType').value = target.type;
+                targetDialog.open();
+            }
+        }
+    } catch (e) {
+        mdui.snackbar({ message: '获取目标信息失败' });
+    }
+}
+
+async function saveTarget() {
+    const name = document.getElementById('targetName').value.trim();
+    const address = document.getElementById('targetAddress').value.trim();
+    const port = document.getElementById('targetPort').value;
+    const type = document.getElementById('targetType').value;
+    
+    if (!name || !address) {
+        mdui.snackbar({ message: '请填写名称和地址' });
+        return;
+    }
+    
+    startloading();
+    
+    try {
+        let url, method;
+        if (currentEditId) {
+            url = `/admin/ping-targets/${currentEditId}/edit`;
+            method = 'POST';
+        } else {
+            url = '/admin/ping-targets/add';
+            method = 'POST';
+        }
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, address, port: parseInt(port), type })
+        });
+        
+        const result = await response.json();
+        endloading();
+        
+        if (result.status === 1) {
+            mdui.snackbar({ message: result.data || '操作成功' });
+            targetDialog.close();
+            location.reload();
+        } else {
+            mdui.snackbar({ message: result.data || '操作失败' });
+        }
+    } catch (e) {
+        endloading();
+        mdui.snackbar({ message: '网络错误' });
+    }
+}
+
+async function deleteTarget(id) {
+    if (!confirm('确定要删除这个监测目标吗？')) return;
+    
+    startloading();
+    
+    try {
+        const response = await fetch(`/admin/ping-targets/${id}/del`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        endloading();
+        
+        if (result.status === 1) {
+            mdui.snackbar({ message: '删除成功' });
+            location.reload();
+        } else {
+            mdui.snackbar({ message: result.data || '删除失败' });
+        }
+    } catch (e) {
+        endloading();
+        mdui.snackbar({ message: '网络错误' });
+    }
+}
+</script>
+{%endblock%}

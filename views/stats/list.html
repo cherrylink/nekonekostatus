@@ -19,6 +19,25 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
 .server-name-input:focus{outline:none;background:rgba(0,0,0,0.1);padding:2px 4px;border-radius:2px;}
 .mdui-theme-layout-dark .server-name{color:#fff;}
 </style>
+
+{%if admin%}
+<div class="mdui-card" style="margin-bottom: 16px;">
+    <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title">
+            <i class="mdui-icon material-icons" style="vertical-align: middle; margin-right: 8px;">network_ping</i>
+            线路监测
+        </div>
+        <div class="mdui-card-primary-subtitle">管理监测目标和查看网络质量数据</div>
+    </div>
+    <div class="mdui-card-actions">
+        <a href="/admin/ping-targets" class="mdui-btn mdui-color-blue mdui-text-color-white">
+            <i class="mdui-icon material-icons">settings</i>
+            监测目标设置
+        </a>
+    </div>
+</div>
+{%endif%}
+
 <table class="mdui-table">
     <thead>
         <tr>
@@ -92,6 +111,9 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
                 <button onclick="webssh('{{sid}}')" class="mdui-btn mdui-btn-icon" mdui-tooltip="{content:'Web SSH'}">
                     <i class="mdui-icon material-icons">open_in_browser</i>
                 </button>
+                <button onclick="configurePing('{{sid}}')" class="mdui-btn mdui-btn-icon" mdui-tooltip="{content:'线路监测配置'}">
+                    <i class="mdui-icon material-icons">network_ping</i>
+                </button>
                 {%endif%}
             </td>
         </tr>
@@ -107,5 +129,12 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
 <script src="/js/stats.js"></script>
 {%if admin%}
 {%include "../webssh.html"%}
+
+<script>
+// 线路监测配置函数
+function configurePing(sid) {
+    window.open(`/admin/servers/${sid}/ping-config`, '_blank');
+}
+</script>
 {%endif%}
 {%endblock%}

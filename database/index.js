@@ -9,7 +9,10 @@ const {servers}=require("./servers")(DB),
     {load_m,load_h}=require("./load")(DB),
     {ssh_scripts}=require("./ssh_scripts")(DB),
     {setting}=require("./setting")(DB),
-    {groups}=require("./groups")(DB);
+    {groups}=require("./groups")(DB),
+    {ping_targets}=require("./ping_targets")(DB),
+    {server_ping_config}=require("./server_ping_config")(DB),
+    {ping_data}=require("./ping_data")(DB);
 function getServers(){return servers.all();}
 return {
     DB,
@@ -19,5 +22,8 @@ return {
     ssh_scripts,
     setting,
     groups,
+    ping_targets,
+    server_ping_config,
+    ping_data,
 };
 }
