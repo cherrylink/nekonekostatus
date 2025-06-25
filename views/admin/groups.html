@@ -2,101 +2,307 @@
 {% block title %}分组管理{% endblock %}
 {% block head %}
 <style>
-.group-item {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 12px;
+.page-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 32px 0;
+    margin-bottom: 32px;
+    border-radius: 0 0 16px 16px;
+}
+
+.page-header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.page-header p {
+    font-size: 16px;
+    margin: 8px 0 0 0;
+    opacity: 0.9;
+}
+
+.groups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.group-card {
     background: white;
-    transition: all 0.3s;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+    position: relative;
+    overflow: hidden;
 }
-.group-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+.group-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
 }
+
+.group-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.default-group {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.default-group::before {
+    background: linear-gradient(90deg, #fff, #f0f0f0);
+}
+
+.default-group .group-name,
+.default-group .group-description {
+    color: white;
+}
+
 .group-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+    align-items: flex-start;
+    margin-bottom: 16px;
 }
+
+.group-info {
+    flex: 1;
+}
+
 .group-name {
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 20px;
+    font-weight: 600;
     color: #333;
+    margin: 0 0 8px 0;
+    line-height: 1.2;
 }
+
 .group-description {
     color: #666;
     font-size: 14px;
-    margin-bottom: 8px;
+    margin: 0;
+    line-height: 1.4;
 }
-.group-stats {
-    display: flex;
-    gap: 16px;
-    font-size: 14px;
-    color: #888;
-}
+
 .group-actions {
     display: flex;
-    gap: 8px;
+    gap: 4px;
+    margin-left: 16px;
 }
+
+.group-actions .mdui-btn {
+    min-width: 40px;
+    height: 40px;
+    border-radius: 8px;
+}
+
+.group-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.default-group .group-stats {
+    border-top-color: rgba(255,255,255,0.3);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.default-group .stat-item {
+    color: rgba(255,255,255,0.9);
+}
+
+.stat-item i {
+    font-size: 18px;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #333;
+}
+
+.default-group .stat-value {
+    color: white;
+}
+
 .add-group-btn {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    bottom: 32px;
+    right: 32px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
     z-index: 1000;
+    transition: all 0.3s ease;
 }
-.default-group {
-    border-left: 4px solid #2196F3;
+
+.add-group-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: #ddd;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    font-size: 18px;
+    margin: 0 0 8px 0;
+}
+
+.empty-state p {
+    font-size: 14px;
+    margin: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .groups-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .group-card {
+        padding: 20px;
+    }
+    
+    .group-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .group-actions {
+        margin-left: 0;
+        align-self: flex-end;
+    }
+    
+    .group-stats {
+        gap: 16px;
+    }
+    
+    .page-header {
+        padding: 24px 0;
+    }
+    
+    .page-header h1 {
+        font-size: 24px;
+    }
+}
+
+/* 对话框样式优化 */
+.mdui-dialog .mdui-textfield {
+    margin-bottom: 16px;
+}
+
+.mdui-dialog-title {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.mdui-dialog-content {
+    padding: 24px;
+}
+
+.mdui-dialog-actions {
+    padding: 16px 24px;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="mdui-container" style="margin-top: 24px;">
-    <div class="mdui-row">
-        <div class="mdui-col-xs-12">
-            <div class="mdui-card">
-                <div class="mdui-card-header">
-                    <div class="mdui-card-header-title">分组管理</div>
-                    <div class="mdui-card-header-subtitle">管理服务器分组</div>
-                </div>
-                <div class="mdui-card-content">
-                    <div id="groups-container">
-                        {% for group in groups %}
-                        <div class="group-item {% if group.id == 0 %}default-group{% endif %}" data-group-id="{{ group.id }}">
-                            <div class="group-header">
-                                <div>
-                                    <div class="group-name">{{ group.name }}</div>
-                                    {% if group.description %}
-                                    <div class="group-description">{{ group.description }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="group-actions">
-                                    {% if group.id != 0 %}
-                                    <button class="mdui-btn mdui-btn-icon" onclick="editGroup({{ group.id }})">
-                                        <i class="mdui-icon material-icons">edit</i>
-                                    </button>
-                                    <button class="mdui-btn mdui-btn-icon" onclick="deleteGroup({{ group.id }})">
-                                        <i class="mdui-icon material-icons">delete</i>
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="group-stats">
-                                <span><i class="mdui-icon material-icons">computer</i> {{ group.server_count }} 台服务器</span>
-                                <span><i class="mdui-icon material-icons">sort</i> 排序: {{ group.sort_order }}</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- 页面头部 -->
+<div class="page-header">
+    <div class="mdui-container">
+        <h1>分组管理</h1>
+        <p>管理服务器分组，优化服务器组织结构</p>
     </div>
 </div>
 
+<div class="mdui-container">
+    {% if groups and groups|length > 0 %}
+    <div class="groups-grid">
+        {% for group in groups %}
+        <div class="group-card {% if group.id == 0 %}default-group{% endif %}" data-group-id="{{ group.id }}">
+            <div class="group-header">
+                <div class="group-info">
+                    <h3 class="group-name">
+                        {{ group.name }}
+                        {% if group.id == 0 %}
+                        <span style="font-size: 12px; opacity: 0.8; font-weight: normal;">（默认）</span>
+                        {% endif %}
+                    </h3>
+                    {% if group.description %}
+                    <p class="group-description">{{ group.description }}</p>
+                    {% endif %}
+                </div>
+                {% if group.id != 0 %}
+                <div class="group-actions">
+                    <button class="mdui-btn mdui-btn-icon mdui-ripple" onclick="editGroup({{ group.id }})" mdui-tooltip="{content: '编辑分组'}">
+                        <i class="mdui-icon material-icons">edit</i>
+                    </button>
+                    <button class="mdui-btn mdui-btn-icon mdui-ripple" onclick="deleteGroup({{ group.id }})" mdui-tooltip="{content: '删除分组'}">
+                        <i class="mdui-icon material-icons">delete</i>
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            <div class="group-stats">
+                <div class="stat-item">
+                    <i class="mdui-icon material-icons">computer</i>
+                    <span class="stat-value">{{ group.server_count or 0 }}</span>
+                    <span>台服务器</span>
+                </div>
+                <div class="stat-item">
+                    <i class="mdui-icon material-icons">sort</i>
+                    <span>排序: </span>
+                    <span class="stat-value">{{ group.sort_order or 0 }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="mdui-icon material-icons">folder_open</i>
+        <h3>暂无分组</h3>
+        <p>点击右下角的加号按钮来添加第一个分组</p>
+    </div>
+    {% endif %}
+</div>
+
 <!-- 添加分组按钮 -->
-<button class="mdui-fab mdui-color-theme-accent add-group-btn" onclick="showAddGroupDialog()">
+<button class="mdui-fab add-group-btn" onclick="showAddGroupDialog()" mdui-tooltip="{content: '添加新分组', position: 'left'}">
     <i class="mdui-icon material-icons">add</i>
 </button>
 
