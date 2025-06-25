@@ -81,11 +81,13 @@ func getSystemInfo() map[string]interface{} {
 	
 	// 获取系统统计信息
 	if stat_data, err := stat.GetStat(); err == nil {
-		info["cpu"] = stat_data.Cpu
-		info["memory"] = stat_data.Mem
-		info["uptime"] = stat_data.Uptime
-		info["load"] = stat_data.Load
-		info["network"] = stat_data.Net
+		info["cpu"] = stat_data["cpu"]
+		info["memory"] = stat_data["mem"]
+		info["network"] = stat_data["net"]
+		info["host"] = stat_data["host"]
+		if walled, exists := stat_data["walled"]; exists {
+			info["walled"] = walled
+		}
 	}
 	
 	info["os"] = runtime.GOOS
