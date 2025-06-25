@@ -48,13 +48,48 @@ module.exports = svr => {
                 
                 db.servers.upd(sid, server_name || existingServer.name, updatedData, existingServer.top, existingServer.group_id);
                 
-                res.json(pr(1, {
+                // 检查并添加默认ping监测配置（如果还没有配置）
+                let configs = [];
+                try {
+                    const existingConfigs = db.server_ping_config ? db.server_ping_config.getEnabled(sid) : [];
+                    
+                    if (existingConfigs.length === 0) {
+                        // 没有配置，添加默认监测目标
+                        const globalTargets = db.ping_targets ? db.ping_targets.getGlobal() : [];
+                        
+                        if (globalTargets && globalTargets.length > 0) {
+                            globalTargets.forEach(target => {
+                                if (db.server_ping_config) {
+                                    db.server_ping_config.set(sid, target.id, 1, 30); // 默认30秒间隔
+                                }
+                            });
+                            console.log(`为更新服务器 ${server_name || existingServer.name} 自动配置了 ${globalTargets.length} 个监测目标`);
+                        }
+                        
+                        // 重新获取配置
+                        configs = db.server_ping_config ? db.server_ping_config.getEnabled(sid) : [];
+                    } else {
+                        configs = existingConfigs;
+                    }
+                } catch (e) {
+                    console.log('处理ping配置失败:', e.message);
+                }
+                
+                const response = {
                     sid: sid,
                     api_key: updatedData.api.key,
                     port: port,
                     status: 'updated',
                     message: '服务器信息已更新'
-                }));
+                };
+                
+                // 如果有ping配置，添加到响应中
+                if (configs && configs.length > 0) {
+                    response.ping_targets = configs;
+                    response.message += `, 已配置${configs.length}个监测目标`;
+                }
+                
+                res.json(pr(1, response));
                 return;
             }
             
