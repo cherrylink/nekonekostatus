@@ -16,12 +16,12 @@
         <div id="auto-register-help" style="display: none;">
             <div style="background: #333; color: #fff; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 13px; margin-top: 8px;">
                 # 基本自动注册<br>
-                curl -sSL {{request.protocol}}://{{request.get_header('host')}}/install-agent.sh | bash -s -- --panel={{request.protocol}}://{{request.get_header('host')}}<br><br>
+                curl -sSL http://YOUR_PANEL_IP:5555/install-agent.sh | bash -s -- --panel=http://YOUR_PANEL_IP:5555<br><br>
                 # 指定分组和名称<br>
-                curl -sSL {{request.protocol}}://{{request.get_header('host')}}/install-agent.sh | bash -s -- --panel={{request.protocol}}://{{request.get_header('host')}} --group=生产环境 --name=Web-01
+                curl -sSL http://YOUR_PANEL_IP:5555/install-agent.sh | bash -s -- --panel=http://YOUR_PANEL_IP:5555 --group=生产环境 --name=Web-01
             </div>
             <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
-                在目标服务器运行上述命令，服务器将自动注册到面板并开始监控
+                请将 YOUR_PANEL_IP 替换为当前面板的IP地址，在目标服务器运行上述命令即可自动注册
             </p>
         </div>
     </div>
