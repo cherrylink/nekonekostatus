@@ -34,7 +34,7 @@ const ping_data={
         SELECT pd.*, pt.name, pt.address, pt.port 
         FROM ping_data pd 
         JOIN ping_targets pt ON pd.target_id = pt.id 
-        WHERE pd.server_id = ? AND pd.timestamp > datetime('now', '-? hours')
+        WHERE pd.server_id = ? AND pd.timestamp > datetime('now', '-' || ? || ' hours')
         ORDER BY pd.timestamp DESC 
         LIMIT ?
     `),
@@ -45,7 +45,7 @@ const ping_data={
     },
     _getByTarget: DB.prepare(`
         SELECT * FROM ping_data 
-        WHERE server_id = ? AND target_id = ? AND timestamp > datetime('now', '-? hours')
+        WHERE server_id = ? AND target_id = ? AND timestamp > datetime('now', '-' || ? || ' hours')
         ORDER BY timestamp DESC 
         LIMIT ?
     `),
@@ -76,14 +76,14 @@ const ping_data={
             MAX(rtt_max) as max_rtt,
             MAX(timestamp) as last_update
         FROM ping_data 
-        WHERE server_id = ? AND target_id = ? AND timestamp > datetime('now', '-? hours')
+        WHERE server_id = ? AND target_id = ? AND timestamp > datetime('now', '-' || ? || ' hours')
     `),
     
     // 清理旧数据
     cleanup(days = 30){
         return this._cleanup.run(days);
     },
-    _cleanup: DB.prepare("DELETE FROM ping_data WHERE timestamp < datetime('now', '-? days')"),
+    _cleanup: DB.prepare("DELETE FROM ping_data WHERE timestamp < datetime('now', '-' || ? || ' days')"),
 };
 
 return {ping_data};
