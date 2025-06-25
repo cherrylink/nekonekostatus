@@ -55,9 +55,9 @@ func TCPPing(targetID int, address string, port int, count int, timeout time.Dur
 		
 		conn.Close()
 		
-		// 间隔100ms再进行下一次ping
+		// 间隔500ms再进行下一次ping，减少CPU压力
 		if i < count-1 {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 	
@@ -88,19 +88,33 @@ func TCPPing(targetID int, address string, port int, count int, timeout time.Dur
 	return result
 }
 
-// TCPPingBoth 同时测试IPv4和IPv6
+// TCPPingBoth 智能测试IPv4和IPv6（优化版本）
 func TCPPingBoth(targetID int, address string, port int, count int, timeout time.Duration) []PingResult {
 	var results []PingResult
 	
-	// 测试IPv4
-	ipv4Result := tcpPingSpecific(targetID, address, port, count, timeout, "tcp4", 4)
-	if ipv4Result.PacketsReceived > 0 {
-		results = append(results, ipv4Result)
+	// 首先尝试快速连接测试，确定可用的IP版本
+	target := fmt.Sprintf("%s:%d", address, port)
+	
+	// 快速检测IPv4可用性
+	ipv4Available := false
+	if conn, err := net.DialTimeout("tcp4", target, 2*time.Second); err == nil {
+		conn.Close()
+		ipv4Available = true
 	}
 	
-	// 测试IPv6
-	ipv6Result := tcpPingSpecific(targetID, address, port, count, timeout, "tcp6", 6)
-	if ipv6Result.PacketsReceived > 0 {
+	// 快速检测IPv6可用性  
+	ipv6Available := false
+	if conn, err := net.DialTimeout("tcp6", target, 2*time.Second); err == nil {
+		conn.Close()
+		ipv6Available = true
+	}
+	
+	// 只测试可用的IP版本，优先IPv4
+	if ipv4Available {
+		ipv4Result := tcpPingSpecific(targetID, address, port, count, timeout, "tcp4", 4)
+		results = append(results, ipv4Result)
+	} else if ipv6Available {
+		ipv6Result := tcpPingSpecific(targetID, address, port, count, timeout, "tcp6", 6)
 		results = append(results, ipv6Result)
 	}
 	
@@ -112,7 +126,7 @@ func TCPPingBoth(targetID int, address string, port int, count int, timeout time
 			PacketsSent:     count,
 			PacketsReceived: 0,
 			PacketLoss:      1.0,
-			Error:           "Both IPv4 and IPv6 failed",
+			Error:           "No available IP version",
 		})
 	}
 	
@@ -146,9 +160,9 @@ func tcpPingSpecific(targetID int, address string, port int, count int, timeout 
 		
 		conn.Close()
 		
-		// 间隔100ms再进行下一次ping
+		// 间隔500ms再进行下一次ping，减少CPU压力
 		if i < count-1 {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 	

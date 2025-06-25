@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 
@@ -92,17 +93,23 @@ func (pm *PingMonitor) startMonitoring() {
 	}
 }
 
-// monitorTarget 监测单个目标
+// monitorTarget 监测单个目标（优化版本）
 func (pm *PingMonitor) monitorTarget(target PingTarget, stopChan chan bool) {
 	interval := time.Duration(target.Interval) * time.Second
-	if interval < 10*time.Second {
-		interval = 30 * time.Second // 最小间隔30秒
+	if interval < 30*time.Second {
+		interval = 30 * time.Second // 最小间隔提高到30秒
 	}
 	
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	
-	fmt.Printf("开始监测目标: %s (%s:%d), 间隔: %v\n", target.Name, target.Address, target.Port, interval)
+	if Config.Debug {
+		fmt.Printf("开始监测目标: %s (%s:%d), 间隔: %v\n", target.Name, target.Address, target.Port, interval)
+	}
+	
+	// 延迟随机时间启动，避免所有目标同时执行
+	randomDelay := time.Duration(target.ID%10) * time.Second
+	time.Sleep(randomDelay)
 	
 	// 立即执行一次
 	pm.pingTarget(target)
@@ -110,41 +117,54 @@ func (pm *PingMonitor) monitorTarget(target PingTarget, stopChan chan bool) {
 	for {
 		select {
 		case <-ticker.C:
-			pm.pingTarget(target)
+			// 执行检测
+			pm.pingTargetWithRetry(target)
+			
 		case <-stopChan:
-			fmt.Printf("停止监测目标: %s\n", target.Name)
+			if Config.Debug {
+				fmt.Printf("停止监测目标: %s\n", target.Name)
+			}
 			return
 		}
 	}
 }
 
-// pingTarget 对单个目标执行ping
-func (pm *PingMonitor) pingTarget(target PingTarget) {
-	fmt.Printf("正在测试目标: %s (%s:%d)\n", target.Name, target.Address, target.Port)
-	
-	// 执行TCP ping，测试5次，超时5秒
-	results := tcpping.TCPPingBoth(target.ID, target.Address, target.Port, 5, 5*time.Second)
-	
-	fmt.Printf("测试完成，获得%d个结果\n", len(results))
+// pingTargetWithRetry 带重试的ping检测
+func (pm *PingMonitor) pingTargetWithRetry(target PingTarget) []tcpping.PingResult {
+	// 执行检测
+	results := tcpping.TCPPingBoth(target.ID, target.Address, target.Port, 3, 3*time.Second)
 	
 	if len(results) > 0 {
 		// 上报结果到后端
 		pm.reportResults(results)
 		
+		// 只在Debug模式或有异常时输出详细结果
 		for _, result := range results {
-			fmt.Printf("监测结果 - 目标:%s IPv%d 发送:%d 接收:%d 丢包率:%.1f%% 平均延迟:%.1fms\n", 
-				target.Name, result.IPVersion, result.PacketsSent, result.PacketsReceived,
-				result.PacketLoss*100, result.RTTAvg)
+			if Config.Debug || result.PacketLoss > 0.1 {
+				fmt.Printf("监测结果 - 目标:%s IPv%d 发送:%d 接收:%d 丢包率:%.1f%% 平均延迟:%.1fms\n", 
+					target.Name, result.IPVersion, result.PacketsSent, result.PacketsReceived,
+					result.PacketLoss*100, result.RTTAvg)
+			}
 		}
 	} else {
-		fmt.Printf("目标 %s 测试失败，无结果\n", target.Name)
+		// 失败时输出简化日志
+		fmt.Printf("目标 %s 检测失败\n", target.Name)
 	}
+	
+	return results
 }
 
-// reportResults 上报监测结果到后端
+// pingTarget 对单个目标执行ping（兼容旧版本调用）
+func (pm *PingMonitor) pingTarget(target PingTarget) {
+	pm.pingTargetWithRetry(target)
+}
+
+// reportResults 上报监测结果到后端（优化版本）
 func (pm *PingMonitor) reportResults(results []tcpping.PingResult) {
 	if Config.Url == "" || Config.ServerID == "" {
-		fmt.Printf("上报失败: URL=%s, ServerID=%s\n", Config.Url, Config.ServerID)
+		if Config.Debug {
+			fmt.Printf("上报失败: URL=%s, ServerID=%s\n", Config.Url, Config.ServerID)
+		}
 		return
 	}
 	
@@ -163,16 +183,26 @@ func (pm *PingMonitor) reportResults(results []tcpping.PingResult) {
 	
 	// 发送到后端
 	url := Config.Url + "/api/ping-data"
-	fmt.Printf("正在上报ping数据到: %s\n", url)
+	if Config.Debug {
+		fmt.Printf("正在上报ping数据到: %s\n", url)
+	}
 	
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	// 使用更短的超时时间
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	
+	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Printf("上报ping数据失败: %v\n", err)
 		return
 	}
 	defer resp.Body.Close()
 	
-	fmt.Printf("ping数据上报成功: %d个结果, HTTP状态: %d\n", len(results), resp.StatusCode)
+	// 只在Debug模式或失败时输出日志
+	if Config.Debug || resp.StatusCode != 200 {
+		fmt.Printf("ping数据上报结果: %d个结果, HTTP状态: %d\n", len(results), resp.StatusCode)
+	}
 }
 
 // 全局监测器实例
@@ -182,9 +212,19 @@ var pingMonitor *PingMonitor
 func initPingMonitor() {
 	pingMonitor = NewPingMonitor()
 	
+	if Config.Debug {
+		fmt.Println("线路监测优化已启用 (Debug模式)")
+	}
+	
+	// 设置GOMAXPROCS限制CPU使用
+	runtime.GOMAXPROCS(2)
+	
 	// 如果配置中有监测目标，启动监测
 	if len(Config.PingTargets) > 0 {
+		fmt.Printf("启动 %d 个监测目标\n", len(Config.PingTargets))
 		pingMonitor.UpdateTargets(Config.PingTargets)
 		pingMonitor.Start()
+		
 	}
 }
+

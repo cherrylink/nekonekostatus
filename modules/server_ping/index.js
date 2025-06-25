@@ -332,6 +332,37 @@ svr.get("/api/servers/:sid/ping-stats",(req,res)=>{
     }
 });
 
+// 性能统计API
+svr.get("/api/ping-performance",(req,res)=>{
+    try {
+        const stats = {
+            // 数据库统计
+            totalRecords: db.DB.prepare("SELECT COUNT(*) as count FROM ping_data").get().count,
+            oldestRecord: db.DB.prepare("SELECT MIN(timestamp) as oldest FROM ping_data").get().oldest,
+            newestRecord: db.DB.prepare("SELECT MAX(timestamp) as newest FROM ping_data").get().newest,
+            
+            // 服务器统计
+            activeServers: db.DB.prepare("SELECT COUNT(DISTINCT server_id) as count FROM ping_data WHERE timestamp > datetime('now', '-1 hour')").get().count,
+            totalTargets: db.DB.prepare("SELECT COUNT(*) as count FROM ping_targets").get().count,
+            
+            // 性能统计
+            avgLatency: db.DB.prepare("SELECT AVG(rtt_avg) as avg FROM ping_data WHERE timestamp > datetime('now', '-1 hour')").get().avg,
+            avgPacketLoss: db.DB.prepare("SELECT AVG(packet_loss) as avg FROM ping_data WHERE timestamp > datetime('now', '-1 hour')").get().avg,
+            
+            // 系统信息
+            uptime: process.uptime(),
+            memoryUsage: process.memoryUsage(),
+            nodeVersion: process.version,
+            platform: process.platform
+        };
+        
+        res.json({status: 1, data: stats});
+    } catch(e) {
+        console.error('获取性能统计失败:', e);
+        res.json({status: 0, error: e.message});
+    }
+});
+
 // 测试API - 直接查询数据库
 svr.get("/api/ping-test",(req,res)=>{
     try {
