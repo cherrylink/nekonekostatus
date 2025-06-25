@@ -106,22 +106,28 @@
 <script>
 const serverId = '{{server.sid}}';
 
+// 目标ID列表
+const targetIds = [
+    {%for target in allTargets%}{{target.id}}{%if not loop.last%},{%endif%}{%endfor%}
+];
+
 async function saveConfig() {
     const form = document.getElementById('configForm');
     const formData = new FormData(form);
     
     // 构建配置数组
     const configs = [];
-    {%for target in allTargets%}
-    const enabled_{{target.id}} = formData.get('enabled_{{target.id}}') === 'on';
-    const interval_{{target.id}} = parseInt(formData.get('interval_{{target.id}}')) || 30;
     
-    configs.push({
-        target_id: {{target.id}},
-        enabled: enabled_{{target.id}},
-        interval_seconds: interval_{{target.id}}
+    targetIds.forEach(targetId => {
+        const enabled = formData.get(`enabled_${targetId}`) === 'on';
+        const interval = parseInt(formData.get(`interval_${targetId}`)) || 30;
+        
+        configs.push({
+            target_id: targetId,
+            enabled: enabled,
+            interval_seconds: interval
+        });
     });
-    {%endfor%}
     
     startloading();
     

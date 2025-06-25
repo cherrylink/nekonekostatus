@@ -45,7 +45,7 @@
                             </span>
                             {%endif%}
                         </td>
-                        <td>{{new Date(target.created_at).toLocaleString()}}</td>
+                        <td>{{target.created_at}}</td>
                         <td>
                             <button class="mdui-btn mdui-btn-icon" onclick="editTarget({{target.id}})" mdui-tooltip="{content:'编辑'}">
                                 <i class="mdui-icon material-icons">edit</i>
