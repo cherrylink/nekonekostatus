@@ -53,6 +53,12 @@
                     <a class="mdui-btn mdui-btn-icon" href="/admin/servers/{{sid}}/">
                         <i class="mdui-icon material-icons">edit</i>
                     </a>
+                    <button onclick="webssh('{{sid}}')" class="mdui-btn mdui-btn-icon" mdui-tooltip="{content:'Web SSH'}">
+                        <i class="mdui-icon material-icons">open_in_browser</i>
+                    </button>
+                    <button onclick="configurePing('{{sid}}')" class="mdui-btn mdui-btn-icon" mdui-tooltip="{content:'线路监测配置'}">
+                        <i class="mdui-icon material-icons">network_check</i>
+                    </button>
                     {%endif%}
                 </div>
                 <div class="mdui-card-content">
@@ -147,4 +153,14 @@
 
 {%block js%}
 <script src="/js/stats.js"></script>
+{%if admin%}
+{%include "../webssh.html"%}
+
+<script>
+// 线路监测配置函数
+function configurePing(sid) {
+    window.open(`/admin/servers/${sid}/ping-config`, '_blank');
+}
+</script>
+{%endif%}
 {%endblock%}
