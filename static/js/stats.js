@@ -46,3 +46,112 @@ setInterval(async()=>{
     }
     mdui.mutation();
 },1000);
+
+// 服务器名称编辑功能
+var currentEditingSid = null;
+
+function editServerName(sid, currentName) {
+    // 防止同时编辑多个服务器名称
+    if (currentEditingSid && currentEditingSid !== sid) {
+        cancelEditServerName(currentEditingSid);
+    }
+    
+    currentEditingSid = sid;
+    var nameSpan = document.querySelector(`.server-name[data-sid="${sid}"]`);
+    if (!nameSpan) return;
+    
+    // 创建输入框
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.className = 'server-name-input';
+    input.style.width = '100%';
+    
+    // 替换span为input
+    nameSpan.parentNode.replaceChild(input, nameSpan);
+    input.focus();
+    input.select();
+    
+    // 绑定事件
+    input.addEventListener('blur', function() {
+        saveServerName(sid, input.value.trim(), currentName);
+    });
+    
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            input.blur(); // 触发保存
+        } else if (e.key === 'Escape') {
+            cancelEditServerName(sid, currentName);
+        }
+    });
+    
+    // 阻止点击事件冒泡
+    input.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+}
+
+function saveServerName(sid, newName, oldName) {
+    if (!newName || newName === oldName) {
+        cancelEditServerName(sid, oldName);
+        return;
+    }
+    
+    // 发送重命名请求
+    fetch(`/admin/servers/${sid}/rename`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 1) {
+            // 成功，更新显示
+            updateServerNameDisplay(sid, newName);
+            // 显示成功消息
+            mdui.snackbar({
+                message: '服务器名称已更新',
+                position: 'right-top'
+            });
+        } else {
+            // 失败，恢复原名称
+            updateServerNameDisplay(sid, oldName);
+            mdui.snackbar({
+                message: data.data || '重命名失败',
+                position: 'right-top'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('重命名失败:', error);
+        updateServerNameDisplay(sid, oldName);
+        mdui.snackbar({
+            message: '网络错误，重命名失败',
+            position: 'right-top'
+        });
+    });
+    
+    currentEditingSid = null;
+}
+
+function cancelEditServerName(sid, originalName) {
+    updateServerNameDisplay(sid, originalName);
+    currentEditingSid = null;
+}
+
+function updateServerNameDisplay(sid, name) {
+    var input = document.querySelector(`input[data-sid="${sid}"], .server-name-input`);
+    if (!input) return;
+    
+    // 创建新的span元素
+    var span = document.createElement('span');
+    span.className = 'server-name';
+    span.setAttribute('data-sid', sid);
+    span.setAttribute('onclick', `editServerName('${sid}', '${name.replace(/'/g, "\\'")}')`)
+    span.textContent = name;
+    
+    // 替换input为span
+    input.parentNode.replaceChild(span, input);
+}

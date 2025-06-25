@@ -13,6 +13,11 @@
 .progress-text{font-size: 16px;font-weight: 800;position: relative;top: 4px;left: 6px;}
 .offline st,.offline at,.offline gt,.offline .progress-text{color: grey;}
 a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
+.server-name{cursor:pointer;color:#333;}
+.server-name:hover{text-decoration:underline;}
+.server-name-input{border:none;background:transparent;font-size:inherit;color:inherit;width:100%;}
+.server-name-input:focus{outline:none;background:rgba(0,0,0,0.1);padding:2px 4px;border-radius:2px;}
+.mdui-theme-layout-dark .server-name{color:#fff;}
 </style>
 <table class="mdui-table">
     <thead>
@@ -24,7 +29,13 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
     {%for sid,node in stats%}
     {%if node.stat!=-1%}
     <tr class="{%if node.stat==0%}offline{%endif%}">
-        <td class="{%if node.stat==0%}mdui-text-color-grey{%endif%}"><a href="/stats/{{sid}}/">{{node.name}}</a></td>
+        <td class="{%if node.stat==0%}mdui-text-color-grey{%endif%}">
+            {%if admin%}
+            <span class="server-name" data-sid="{{sid}}" onclick="editServerName('{{sid}}', '{{node.name}}')">{{node.name}}</span>
+            {%else%}
+            <a href="/stats/{{sid}}/">{{node.name}}</a>
+            {%endif%}
+        </td>
         <td><st><span id="{{sid}}_NET_IN" style="max-width: fit-content;">NaN</span></st></td>
         <td><at><span id="{{sid}}_NET_OUT" style="max-width: fit-content;">NaN</span></at></td>
         <td><st><span id="{{sid}}_NET_IN_TOTAL" style="max-width: fit-content;">NaN</span></st></td>
