@@ -36,7 +36,7 @@ module.exports = svr => {
                         privateKey: ''
                     },
                     api: {
-                        mode: false,
+                        mode: true,  // 默认使用主动模式
                         key: existingServer.data.api?.key || uuid.v4(),
                         port: port
                     },
@@ -88,7 +88,7 @@ module.exports = svr => {
                     privateKey: ''
                 },
                 api: {
-                    mode: false,
+                    mode: true,  // 默认使用主动模式
                     key: api_key,
                     port: port
                 },

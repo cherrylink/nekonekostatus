@@ -206,6 +206,8 @@ func AutoRegister(panelURL, groupName, serverName string) error {
 		// 更新配置
 		Config.Key = regData.APIKey
 		Config.Port = regData.Port
+		Config.Url = panelURL  // 保存面板地址用于主动推送
+		Config.Push = true     // 启用主动推送模式
 		
 		// 保存配置到文件
 		err = saveConfig(machineID, regData)
@@ -238,6 +240,8 @@ func saveConfig(machineID string, data RegisterData) error {
 	config := map[string]interface{}{
 		"key":        data.APIKey,
 		"port":       data.Port,
+		"url":        Config.Url,
+		"push":       true,  // 启用主动推送
 		"debug":      false,
 		"machine_id": machineID,
 		"server_id":  data.SID,
