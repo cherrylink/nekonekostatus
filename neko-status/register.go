@@ -28,16 +28,18 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	Status int    `json:"status"`
-	Msg    string `json:"msg"`
-	Data   struct {
-		SID       string `json:"sid"`
-		Name      string `json:"name"`
-		APIKey    string `json:"api_key"`
-		Port      int    `json:"port"`
-		GroupID   int    `json:"group_id"`
-		Status    string `json:"status"`
-	} `json:"data"`
+	Status int                    `json:"status"`
+	Msg    string                 `json:"msg"`
+	Data   interface{}            `json:"data"`
+}
+
+type RegisterData struct {
+	SID       string `json:"sid"`
+	Name      string `json:"name"`
+	APIKey    string `json:"api_key"`
+	Port      int    `json:"port"`
+	GroupID   int    `json:"group_id"`
+	Status    string `json:"status"`
 }
 
 // 生成机器唯一标识
@@ -169,34 +171,63 @@ func AutoRegister(panelURL, groupName, serverName string) error {
 		return fmt.Errorf("注册失败: %s", registerResp.Msg)
 	}
 	
-	// 更新配置
-	Config.Key = registerResp.Data.APIKey
-	Config.Port = registerResp.Data.Port
-	
-	// 保存配置到文件
-	err = saveConfig(machineID, registerResp.Data)
-	if err != nil {
-		fmt.Printf("保存配置失败: %v\n", err)
+	// 检查返回的数据类型
+	switch data := registerResp.Data.(type) {
+	case string:
+		// 服务器已存在，返回字符串消息
+		fmt.Printf("注册结果: %s\n", data)
+		fmt.Printf("服务器已存在，配置已更新。使用现有配置启动服务。\n")
+		return nil
+		
+	case map[string]interface{}:
+		// 新注册，返回详细信息
+		var regData RegisterData
+		
+		// 手动解析map到结构体
+		if sid, ok := data["sid"].(string); ok {
+			regData.SID = sid
+		}
+		if name, ok := data["name"].(string); ok {
+			regData.Name = name
+		}
+		if apiKey, ok := data["api_key"].(string); ok {
+			regData.APIKey = apiKey
+		}
+		if port, ok := data["port"].(float64); ok {
+			regData.Port = int(port)
+		}
+		if groupID, ok := data["group_id"].(float64); ok {
+			regData.GroupID = int(groupID)
+		}
+		if status, ok := data["status"].(string); ok {
+			regData.Status = status
+		}
+		
+		// 更新配置
+		Config.Key = regData.APIKey
+		Config.Port = regData.Port
+		
+		// 保存配置到文件
+		err = saveConfig(machineID, regData)
+		if err != nil {
+			fmt.Printf("保存配置失败: %v\n", err)
+		}
+		
+		fmt.Printf("注册成功:\n")
+		fmt.Printf("  服务器ID: %s\n", regData.SID)
+		fmt.Printf("  服务器名称: %s\n", regData.Name)
+		fmt.Printf("  API密钥: %s\n", regData.APIKey)
+		fmt.Printf("  端口: %d\n", regData.Port)
+		
+	default:
+		return fmt.Errorf("未知的响应数据格式")
 	}
-	
-	fmt.Printf("注册成功:\n")
-	fmt.Printf("  服务器ID: %s\n", registerResp.Data.SID)
-	fmt.Printf("  服务器名称: %s\n", registerResp.Data.Name)
-	fmt.Printf("  API密钥: %s\n", registerResp.Data.APIKey)
-	fmt.Printf("  端口: %d\n", registerResp.Data.Port)
 	
 	return nil
 }
 
 // 保存配置到文件
-func saveConfig(machineID string, data struct {
-	SID       string `json:"sid"`
-	Name      string `json:"name"`
-	APIKey    string `json:"api_key"`
-	Port      int    `json:"port"`
-	GroupID   int    `json:"group_id"`
-	Status    string `json:"status"`
-}) error {
+func saveConfig(machineID string, data RegisterData) error {
 	// 创建配置目录
 	configDir := "/etc/neko-status"
 	if err := os.MkdirAll(configDir, 0755); err != nil {
