@@ -105,8 +105,26 @@ module.exports = svr => {
             // 插入新服务器
             db.servers.ins(sid, final_name, serverData, maxTop + 1, 1, group_id);
             
-            // 返回成功响应
-            res.json(pr(1, {
+            // 添加默认ping监测配置
+            try {
+                // 获取所有全局监测目标
+                const globalTargets = db.ping_targets ? db.ping_targets.getGlobal() : [];
+                
+                if (globalTargets && globalTargets.length > 0) {
+                    // 为新服务器自动配置全局监测目标
+                    globalTargets.forEach(target => {
+                        if (db.server_ping_config) {
+                            db.server_ping_config.set(sid, target.id, 1, 30); // 默认30秒间隔
+                        }
+                    });
+                    console.log(`为新服务器 ${final_name} 自动配置了 ${globalTargets.length} 个监测目标:`, globalTargets.map(t => `${t.name}(${t.address}:${t.port})`).join(', '));
+                }
+            } catch (e) {
+                console.log('自动配置ping监测失败:', e.message);
+            }
+            
+            // 返回包含ping配置的响应
+            const response = {
                 sid: sid,
                 name: final_name,
                 api_key: api_key,
@@ -114,7 +132,20 @@ module.exports = svr => {
                 group_id: group_id,
                 status: 'registered',
                 message: '服务器注册成功'
-            }));
+            };
+            
+            // 如果有ping配置，添加到响应中
+            try {
+                const configs = db.server_ping_config ? db.server_ping_config.getEnabled(sid) : [];
+                if (configs && configs.length > 0) {
+                    response.ping_targets = configs;
+                    response.message += `, 已配置${configs.length}个监测目标`;
+                }
+            } catch (e) {
+                console.log('获取ping配置失败:', e.message);
+            }
+            
+            res.json(pr(1, response));
             
         } catch (error) {
             console.error('自动注册错误:', error);

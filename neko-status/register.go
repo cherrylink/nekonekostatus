@@ -34,12 +34,13 @@ type RegisterResponse struct {
 }
 
 type RegisterData struct {
-	SID       string `json:"sid"`
-	Name      string `json:"name"`
-	APIKey    string `json:"api_key"`
-	Port      int    `json:"port"`
-	GroupID   int    `json:"group_id"`
-	Status    string `json:"status"`
+	SID         string       `json:"sid"`
+	Name        string       `json:"name"`
+	APIKey      string       `json:"api_key"`
+	Port        int          `json:"port"`
+	GroupID     int          `json:"group_id"`
+	Status      string       `json:"status"`
+	PingTargets []PingTarget `json:"ping_targets,omitempty"`
 }
 
 // 生成机器唯一标识
@@ -244,12 +245,38 @@ func AutoRegister(panelURL, groupName, serverName string) error {
 			regData.Status = status
 		}
 		
+		// 处理ping配置
+		if pingTargets, ok := data["ping_targets"].([]interface{}); ok {
+			for _, target := range pingTargets {
+				if targetMap, ok := target.(map[string]interface{}); ok {
+					pingTarget := PingTarget{}
+					if id, ok := targetMap["target_id"].(float64); ok {
+						pingTarget.ID = int(id)
+					}
+					if name, ok := targetMap["name"].(string); ok {
+						pingTarget.Name = name
+					}
+					if address, ok := targetMap["address"].(string); ok {
+						pingTarget.Address = address
+					}
+					if port, ok := targetMap["port"].(float64); ok {
+						pingTarget.Port = int(port)
+					}
+					if interval, ok := targetMap["interval_seconds"].(float64); ok {
+						pingTarget.Interval = int(interval)
+					}
+					regData.PingTargets = append(regData.PingTargets, pingTarget)
+				}
+			}
+		}
+		
 		// 更新配置
 		Config.Key = regData.APIKey
 		Config.Port = regData.Port
 		Config.Url = panelURL     // 保存面板地址用于主动推送
 		Config.Push = true        // 启用主动推送模式
 		Config.ServerID = regData.SID // 保存服务器ID
+		Config.PingTargets = regData.PingTargets // 保存ping配置
 		
 		// 保存配置到文件
 		err = saveConfig(machineID, regData)
@@ -262,6 +289,12 @@ func AutoRegister(panelURL, groupName, serverName string) error {
 		fmt.Printf("  服务器名称: %s\n", regData.Name)
 		fmt.Printf("  API密钥: %s\n", regData.APIKey)
 		fmt.Printf("  端口: %d\n", regData.Port)
+		if len(regData.PingTargets) > 0 {
+			fmt.Printf("  监测目标: %d 个\n", len(regData.PingTargets))
+			for _, target := range regData.PingTargets {
+				fmt.Printf("    - %s (%s:%d)\n", target.Name, target.Address, target.Port)
+			}
+		}
 		
 	default:
 		return fmt.Errorf("未知的响应数据格式")
@@ -288,6 +321,12 @@ func saveConfig(machineID string, data RegisterData) error {
 		"machine_id": machineID,
 		"server_id":  data.SID,
 		"registered": true,
+	}
+	
+	// 添加ping配置
+	if len(data.PingTargets) > 0 {
+		config["ping_targets"] = data.PingTargets
+		fmt.Printf("配置了 %d 个监测目标\n", len(data.PingTargets))
 	}
 	
 	// 序列化为YAML
