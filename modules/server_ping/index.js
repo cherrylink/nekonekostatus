@@ -134,7 +134,11 @@ systemctl restart nekonekostatus`;
 svr.post("/api/ping-data",async(req,res)=>{
     var {sid, data} = req.body;
     
+    console.log(`收到ping数据上报: sid=${sid}, data长度=${data ? data.length : 'undefined'}`);
+    console.log('上报数据详情:', JSON.stringify(req.body, null, 2));
+    
     if(!sid || !data){
+        console.log('参数错误: sid或data为空');
         res.json(pr(0, '参数错误'));
         return;
     }
@@ -142,7 +146,9 @@ svr.post("/api/ping-data",async(req,res)=>{
     try {
         // data是数组，包含多个监测结果
         if(Array.isArray(data)){
+            console.log(`处理${data.length}个ping结果`);
             for(let pingResult of data){
+                console.log(`保存ping数据: target_id=${pingResult.target_id}, ip_version=${pingResult.ip_version}, packet_loss=${pingResult.packet_loss}`);
                 db.ping_data.ins(
                     sid,
                     pingResult.target_id,
@@ -155,6 +161,7 @@ svr.post("/api/ping-data",async(req,res)=>{
                     pingResult.rtt_max
                 );
             }
+            console.log('所有ping数据保存完成');
         }
         
         res.json(pr(1, '数据接收成功'));
