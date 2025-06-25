@@ -154,11 +154,14 @@ func AutoRegister(panelURL, groupName, serverName string) error {
 		return fmt.Errorf("读取响应失败: %v", err)
 	}
 	
+	// 打印响应内容用于调试
+	fmt.Printf("服务器响应: %s\n", string(body))
+	
 	// 解析响应
 	var registerResp RegisterResponse
 	err = json.Unmarshal(body, &registerResp)
 	if err != nil {
-		return fmt.Errorf("解析响应失败: %v", err)
+		return fmt.Errorf("解析响应失败: %v\n响应内容: %s", err, string(body))
 	}
 	
 	// 检查注册结果
