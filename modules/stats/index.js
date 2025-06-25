@@ -70,7 +70,15 @@ svr.get("/stats/:sid/data",(req,res)=>{
 svr.post("/stats/update",(req,res)=>{
     let {sid,data}=req.body;
     console.log(`收到服务器 ${sid} 的主动推送数据:`, JSON.stringify(data).substring(0, 200));
-    stats[sid]=data;
+    
+    // 获取服务器信息以包装数据格式，保持与被动模式一致
+    let server = db.servers.get(sid);
+    if(server) {
+        stats[sid] = {name: server.name, stat: data};
+    } else {
+        stats[sid] = {name: sid, stat: data}; // fallback
+    }
+    
     res.json(pr(1,'update success'));
 });
 async function getStat(server){

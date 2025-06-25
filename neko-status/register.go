@@ -67,6 +67,12 @@ func generateMachineID() string {
 
 // 获取本机IP地址
 func getLocalIP() string {
+	// 首先尝试获取公网IP
+	if publicIP := getPublicIP(); publicIP != "" {
+		return publicIP
+	}
+	
+	// 如果获取公网IP失败，使用内网IP
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
 		return "127.0.0.1"
@@ -75,6 +81,41 @@ func getLocalIP() string {
 	
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP.String()
+}
+
+// 获取公网IP
+func getPublicIP() string {
+	// 尝试多个服务获取公网IP
+	services := []string{
+		"https://api.ipify.org",
+		"https://ifconfig.me",
+		"https://icanhazip.com",
+		"https://ipinfo.io/ip",
+	}
+	
+	client := &http.Client{Timeout: 5 * time.Second}
+	
+	for _, service := range services {
+		resp, err := client.Get(service)
+		if err != nil {
+			continue
+		}
+		
+		body, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		
+		if err != nil {
+			continue
+		}
+		
+		ip := string(bytes.TrimSpace(body))
+		// 简单验证IP格式
+		if net.ParseIP(ip) != nil {
+			return ip
+		}
+	}
+	
+	return ""
 }
 
 // 获取系统信息
@@ -206,8 +247,9 @@ func AutoRegister(panelURL, groupName, serverName string) error {
 		// 更新配置
 		Config.Key = regData.APIKey
 		Config.Port = regData.Port
-		Config.Url = panelURL  // 保存面板地址用于主动推送
-		Config.Push = true     // 启用主动推送模式
+		Config.Url = panelURL     // 保存面板地址用于主动推送
+		Config.Push = true        // 启用主动推送模式
+		Config.ServerID = regData.SID // 保存服务器ID
 		
 		// 保存配置到文件
 		err = saveConfig(machineID, regData)

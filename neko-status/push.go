@@ -62,6 +62,10 @@ func pushStats() {
 
 // 获取服务器ID
 func getServerID() string {
-	// 从配置或生成的机器ID中获取
+	// 如果配置中有server_id，使用配置的ID
+	if Config.ServerID != "" {
+		return Config.ServerID
+	}
+	// 否则使用machine_id作为fallback
 	return generateMachineID()
 }
