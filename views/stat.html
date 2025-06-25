@@ -81,6 +81,38 @@
                     </div>
                 </div>
             </li>
+            <li class="mdui-list-item">
+                <i class="mdui-list-item-icon mdui-icon material-icons">public</i>
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-title">公网IP</div>
+                    <div class="mdui-list-item-text mdui-list-item-one-line" style="opacity:1;">
+                        <span id="ASN_IP">{{node.stat.asn.ip if node.stat.asn else '-'}}</span>
+                    </div>
+                </div>
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-title">ASN</div>
+                    <div class="mdui-list-item-text mdui-list-item-one-line" style="opacity:1;">
+                        <span id="ASN_ORG">{{node.stat.asn.asn + ' ' + node.stat.asn.org if node.stat.asn and node.stat.asn.asn else '-'}}</span>
+                    </div>
+                </div>
+            </li>
+            <li class="mdui-list-item">
+                <i class="mdui-list-item-icon mdui-icon material-icons">device_hub</i>
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-title">TCP连接</div>
+                    <div class="mdui-list-item-text" style="opacity:1;">
+                        <div>活跃: <span id="TCP_EST">{{node.stat.connections.tcp_established if node.stat.connections else '0'}}</span></div>
+                        <div>监听: <span id="TCP_LISTEN">{{node.stat.connections.tcp_listen if node.stat.connections else '0'}}</span></div>
+                        <div>等待: <span id="TCP_WAIT">{{node.stat.connections.tcp_time_wait if node.stat.connections else '0'}}</span></div>
+                    </div>
+                </div>
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-title">UDP连接</div>
+                    <div class="mdui-list-item-text mdui-list-item-one-line" style="opacity:1;">
+                        <span id="UDP_TOTAL">{{node.stat.connections.udp_total if node.stat.connections else '0'}}</span>
+                    </div>
+                </div>
+            </li>
             <br>
             {%include "./statistics.html"%}
             <br>

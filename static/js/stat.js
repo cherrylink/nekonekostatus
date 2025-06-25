@@ -19,7 +19,7 @@ var mem_tooltip=new mdui.Tooltip(`#MEM_item`,{}),
 async function get(){
     var node=await fetch("./data").then(res=>res.json());
     if(!node||node.stat==-1)return;
-    var {cpu,mem,net,host}=node.stat;
+    var {cpu,mem,net,host,asn,connections}=node.stat;
     E(`CPU`).innerText=(cpu.multi*100).toFixed(2)+'%';
     // E(`CPU_progress`).style.width=`${cpu.multi*100}%`;
     var i=0;
@@ -45,6 +45,26 @@ async function get(){
         E(`net_${device}_delta_out`).innerText=strbps(Net.delta.out);
         E(`net_${device}_total_in`).innerText=strB(Net.total.in);
         E(`net_${device}_total_out`).innerText=strB(Net.total.out);
+    }
+    
+    // 更新ASN信息
+    if(asn){
+        var asnIpEl = E('ASN_IP');
+        var asnOrgEl = E('ASN_ORG');
+        if(asnIpEl) asnIpEl.innerText = asn.ip || '-';
+        if(asnOrgEl) asnOrgEl.innerText = asn.asn ? `${asn.asn} ${asn.org||''}` : '-';
+    }
+    
+    // 更新连接统计
+    if(connections){
+        var tcpEstEl = E('TCP_EST');
+        var tcpListenEl = E('TCP_LISTEN');
+        var tcpWaitEl = E('TCP_WAIT');
+        var udpTotalEl = E('UDP_TOTAL');
+        if(tcpEstEl) tcpEstEl.innerText = connections.tcp_established || '0';
+        if(tcpListenEl) tcpListenEl.innerText = connections.tcp_listen || '0';
+        if(tcpWaitEl) tcpWaitEl.innerText = connections.tcp_time_wait || '0';
+        if(udpTotalEl) udpTotalEl.innerText = connections.udp_total || '0';
     }
 
     var content=

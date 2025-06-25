@@ -22,14 +22,14 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
 <table class="mdui-table">
     <thead>
         <tr>
-            <th>名称</th><th>下行</th><th>上行</th><th>总下行</th><th>总上行</th><th>CPU</th><th>内存</th><th>more</th>
+            <th>名称</th><th>IP/ASN</th><th>TCP连接</th><th>UDP连接</th><th>下行</th><th>上行</th><th>CPU</th><th>内存</th><th>more</th>
         </tr>
     </thead>
     <tbody>
     {%for group in groups%}
       {%if statsByGroup[group.id].servers.length > 0%}
         <tr class="mdui-color-grey-100">
-            <td colspan="8" style="font-weight: bold; padding: 12px;">
+            <td colspan="9" style="font-weight: bold; padding: 12px;">
                 <i class="mdui-icon material-icons" style="vertical-align: middle; margin-right: 8px;">folder</i>
                 {{group.name}}
                 <span style="font-size: 0.9em; color: #666; margin-left: 8px;">({{statsByGroup[group.id].servers.length}}台)</span>
@@ -50,10 +50,25 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
                 <a href="/stats/{{sid}}/">{{node.name}}</a>
                 {%endif%}
             </td>
+            <td>
+                <div style="font-size: 0.85em;">
+                    <div id="{{sid}}_IP" style="font-weight: bold;">-</div>
+                    <div id="{{sid}}_ASN" style="color: #666;">-</div>
+                </div>
+            </td>
+            <td>
+                <div style="font-size: 0.85em;">
+                    <div>活跃: <span id="{{sid}}_TCP_EST">-</span></div>
+                    <div>监听: <span id="{{sid}}_TCP_LISTEN">-</span></div>
+                </div>
+            </td>
+            <td>
+                <div style="font-size: 0.85em;">
+                    <span id="{{sid}}_UDP_TOTAL">-</span>
+                </div>
+            </td>
             <td><st><span id="{{sid}}_NET_IN" style="max-width: fit-content;">NaN</span></st></td>
             <td><at><span id="{{sid}}_NET_OUT" style="max-width: fit-content;">NaN</span></at></td>
-            <td><st><span id="{{sid}}_NET_IN_TOTAL" style="max-width: fit-content;">NaN</span></st></td>
-            <td><at><span id="{{sid}}_NET_OUT_TOTAL" style="max-width: fit-content;">NaN</span></at></td>
             <td class="progress">
                 <div class="mdui-progress" style="height: 30px;">
                     <div id="{{sid}}_CPU_progress" class="mdui-progress-determinate mdui-color-indigo-400" style="width: 0%">

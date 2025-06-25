@@ -18,7 +18,7 @@ var mem_tooltips={},host_tooltips={};
 setInterval(async()=>{
     var stats=await fetch("/stats/data").then(res=>res.json());
     for(var [sid,node] of Object.entries(stats))if(node.stat&&node.stat!=-1){
-        var {cpu,mem,net,host}=node.stat;
+        var {cpu,mem,net,host,asn,connections}=node.stat;
         E(`${sid}_CPU`).innerText=(cpu.multi*100).toFixed(2)+'%';
         E(`${sid}_CPU_progress`).style.width=`${cpu.multi*100}%`;
         
@@ -33,6 +33,24 @@ setInterval(async()=>{
         E(`${sid}_NET_OUT`).innerText=strbps(net.delta.out);
         E(`${sid}_NET_IN_TOTAL`).innerText=strB(net.total.in);
         E(`${sid}_NET_OUT_TOTAL`).innerText=strB(net.total.out);
+        
+        // 更新ASN信息
+        if(asn){
+            var ipEl = E(`${sid}_IP`);
+            var asnEl = E(`${sid}_ASN`);
+            if(ipEl) ipEl.innerText = asn.ip || '-';
+            if(asnEl) asnEl.innerText = asn.asn ? `${asn.asn} ${asn.org||''}` : '-';
+        }
+        
+        // 更新连接统计
+        if(connections){
+            var tcpEstEl = E(`${sid}_TCP_EST`);
+            var tcpListenEl = E(`${sid}_TCP_LISTEN`);
+            var udpTotalEl = E(`${sid}_UDP_TOTAL`);
+            if(tcpEstEl) tcpEstEl.innerText = connections.tcp_established || '0';
+            if(tcpListenEl) tcpListenEl.innerText = connections.tcp_listen || '0';
+            if(udpTotalEl) udpTotalEl.innerText = connections.udp_total || '0';
+        }
 
         var content=
 `系统: ${host.os}
