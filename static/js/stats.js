@@ -29,10 +29,15 @@ setInterval(async()=>{
         if(mem_tooltips[sid])mem_tooltips[sid].$element[0].innerText=content;
 	    else mem_tooltips[sid]=new mdui.Tooltip(`#${sid}_MEM_item`,{content});
 
-        E(`${sid}_NET_IN`).innerText=strbps(net.delta.in);
-        E(`${sid}_NET_OUT`).innerText=strbps(net.delta.out);
-        E(`${sid}_NET_IN_TOTAL`).innerText=strB(net.total.in);
-        E(`${sid}_NET_OUT_TOTAL`).innerText=strB(net.total.out);
+        var netInEl = E(`${sid}_NET_IN`);
+        var netOutEl = E(`${sid}_NET_OUT`);
+        var netInTotalEl = E(`${sid}_NET_IN_TOTAL`);
+        var netOutTotalEl = E(`${sid}_NET_OUT_TOTAL`);
+        
+        if(netInEl) netInEl.innerText=strbps(net.delta.in);
+        if(netOutEl) netOutEl.innerText=strbps(net.delta.out);
+        if(netInTotalEl) netInTotalEl.innerText=strB(net.total.in);
+        if(netOutTotalEl) netOutTotalEl.innerText=strB(net.total.out);
         
         // 更新ASN信息
         if(asn){
