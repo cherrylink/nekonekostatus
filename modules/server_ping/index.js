@@ -86,21 +86,36 @@ svr.post("/admin/servers/:sid/sync-ping",async(req,res)=>{
         const configs = db.server_ping_config.getEnabled(sid);
         
         // 构建配置文件内容
-        let configYaml = `key: ${server.data.api.key}\nport: ${server.data.api.port}\ndebug: false\n`;
+        let configYaml = `key: ${server.data.api.key}
+port: ${server.data.api.port}
+debug: false`;
+
+        // 添加必要的URL和server_id信息
+        const panelUrl = `http://${req.get('host')}`;
+        configYaml += `\nurl: ${panelUrl}`;
+        configYaml += `\nserver_id: ${server.sid}`;
+        configYaml += `\npush: true`;
         
         if(configs.length > 0){
-            configYaml += 'ping_targets:\n';
+            configYaml += '\nping_targets:';
             for(let config of configs){
-                configYaml += `  - id: ${config.target_id}\n`;
-                configYaml += `    name: "${config.name}"\n`;
-                configYaml += `    address: "${config.address}"\n`;
-                configYaml += `    port: ${config.port}\n`;
-                configYaml += `    interval: ${config.interval_seconds}\n`;
+                configYaml += `
+  - id: ${config.target_id}
+    name: "${config.name}"
+    address: "${config.address}"
+    port: ${config.port}
+    interval: ${config.interval_seconds}`;
             }
         }
         
-        // 通过SSH更新配置文件
-        const updateConfigCmd = `echo '${configYaml}' > /etc/neko-status/config.yaml && systemctl restart nekonekostatus`;
+        // 通过SSH更新配置文件，使用heredoc避免引号问题
+        const updateConfigCmd = `cat > /etc/neko-status/config.yaml << 'EOF'
+${configYaml}
+EOF
+systemctl restart nekonekostatus`;
+
+        console.log('同步配置到Agent:', server.name);
+        console.log('配置内容:', configYaml);
         
         const result = await ssh.Exec(server.data.ssh, updateConfigCmd);
         

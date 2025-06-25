@@ -52,7 +52,18 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		// fmt.Println(Config)
+		
+		// 调试信息
+		fmt.Printf("配置加载完成: URL=%s, ServerID=%s, PingTargets=%d个\n", 
+			Config.Url, Config.ServerID, len(Config.PingTargets))
+		
+		if len(Config.PingTargets) > 0 {
+			fmt.Println("监测目标:")
+			for _, target := range Config.PingTargets {
+				fmt.Printf("  - %s (%s:%d) 间隔:%ds\n", 
+					target.Name, target.Address, target.Port, target.Interval)
+			}
+		}
 	}
 	if show_version {
 		fmt.Println("neko-status v1.0")
