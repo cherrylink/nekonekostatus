@@ -90,12 +90,56 @@
 {%if configs.length > 0%}
 <div class="mdui-card mt">
     <div class="mdui-card-primary">
-        <div class="mdui-card-primary-title">监测数据预览</div>
-        <div class="mdui-card-primary-subtitle">最近的监测结果</div>
+        <div class="mdui-card-primary-title">监测数据图表</div>
+        <div class="mdui-card-primary-subtitle">实时线路质量监测</div>
+    </div>
+    <div class="mdui-card-menu">
+        <div class="mdui-select" mdui-select="{position: 'bottom'}">
+            <select id="timeRangeSelect" onchange="updateCharts()">
+                <option value="1">最近1小时</option>
+                <option value="6">最近6小时</option>
+                <option value="24" selected>最近24小时</option>
+                <option value="72">最近72小时</option>
+            </select>
+            <i class="mdui-icon material-icons">arrow_drop_down</i>
+        </div>
     </div>
     <div class="mdui-card-content">
-        <div id="pingDataPreview">
-            <p>正在加载数据...</p>
+        <div class="mdui-tab" mdui-tab>
+            <a href="#chartTab1" class="mdui-ripple">延迟趋势</a>
+            <a href="#chartTab2" class="mdui-ripple">丢包率</a>
+            <a href="#chartTab3" class="mdui-ripple">目标对比</a>
+        </div>
+        
+        <div id="chartTab1" class="mdui-p-a-2">
+            <canvas id="latencyChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div id="chartTab2" class="mdui-p-a-2">
+            <canvas id="packetLossChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div id="chartTab3" class="mdui-p-a-2">
+            <canvas id="comparisonChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="mdui-m-t-2">
+            <div class="mdui-table-fluid">
+                <table class="mdui-table mdui-table-dense">
+                    <thead>
+                        <tr>
+                            <th>目标</th>
+                            <th>当前状态</th>
+                            <th>平均延迟</th>
+                            <th>丢包率</th>
+                            <th>最后更新</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTable">
+                        <tr><td colspan="5">正在加载...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -103,6 +147,7 @@
 {%endblock%}
 
 {%block js%}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const serverId = '{{server.sid}}';
 
@@ -177,40 +222,323 @@ async function syncConfig() {
     }
 }
 
-// 加载监测数据预览
-async function loadDataPreview() {
+// Chart.js 图表实例
+let latencyChart = null;
+let packetLossChart = null;
+let comparisonChart = null;
+
+// 初始化图表
+function initCharts() {
+    // 延迟趋势图
+    const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+    latencyChart = new Chart(latencyCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: []
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: '延迟趋势 (ms)'
+                },
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '延迟 (ms)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: '时间'
+                    }
+                }
+            }
+        }
+    });
+
+    // 丢包率图
+    const packetLossCtx = document.getElementById('packetLossChart').getContext('2d');
+    packetLossChart = new Chart(packetLossCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: []
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: '丢包率趋势 (%)'
+                },
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: '丢包率 (%)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: '时间'
+                    }
+                }
+            }
+        }
+    });
+
+    // 目标对比图
+    const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+    comparisonChart = new Chart(comparisonCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '平均延迟 (ms)',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }, {
+                label: '丢包率 (%)',
+                data: [],
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '目标性能对比'
+                },
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: '延迟 (ms)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: '丢包率 (%)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+}
+
+// 更新图表数据
+async function updateCharts() {
+    const hours = document.getElementById('timeRangeSelect').value;
+    
     try {
-        const response = await fetch(`/api/servers/${serverId}/ping-data?hours=1`);
+        const response = await fetch(`/api/servers/${serverId}/ping-data?hours=${hours}`);
         const result = await response.json();
         
         if (result.status === 1 && result.data.length > 0) {
-            let html = '<div class="mdui-table-fluid"><table class="mdui-table mdui-table-dense">';
-            html += '<thead><tr><th>目标</th><th>IP版本</th><th>丢包率</th><th>平均延迟</th><th>时间</th></tr></thead><tbody>';
+            const data = result.data;
             
-            result.data.slice(0, 10).forEach(item => {
-                html += `<tr>
-                    <td>${item.name}</td>
-                    <td>IPv${item.ip_version}</td>
-                    <td>${(item.packet_loss * 100).toFixed(1)}%</td>
-                    <td>${item.rtt_avg ? item.rtt_avg.toFixed(1) + 'ms' : '-'}</td>
-                    <td>${new Date(item.timestamp).toLocaleString()}</td>
-                </tr>`;
+            // 按目标分组数据
+            const targetData = {};
+            data.forEach(item => {
+                if (!targetData[item.target_id]) {
+                    targetData[item.target_id] = {
+                        name: item.name,
+                        address: item.address,
+                        port: item.port,
+                        data: []
+                    };
+                }
+                targetData[item.target_id].data.push(item);
             });
             
-            html += '</tbody></table></div>';
-            document.getElementById('pingDataPreview').innerHTML = html;
-        } else {
-            document.getElementById('pingDataPreview').innerHTML = '<p>暂无监测数据</p>';
+            // 更新延迟趋势图
+            updateLatencyChart(targetData);
+            
+            // 更新丢包率图
+            updatePacketLossChart(targetData);
+            
+            // 更新对比图
+            updateComparisonChart(targetData);
+            
+            // 更新汇总表
+            updateSummaryTable(targetData);
         }
     } catch (e) {
-        document.getElementById('pingDataPreview').innerHTML = '<p>加载数据失败</p>';
+        console.error('获取图表数据失败:', e);
     }
 }
 
-// 页面加载完成后加载数据预览
+// 更新延迟趋势图
+function updateLatencyChart(targetData) {
+    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+    const datasets = [];
+    let allLabels = [];
+    
+    Object.values(targetData).forEach((target, index) => {
+        const sortedData = target.data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const labels = sortedData.map(item => new Date(item.timestamp).toLocaleTimeString());
+        const latencies = sortedData.map(item => item.rtt_avg || 0);
+        
+        if (labels.length > allLabels.length) {
+            allLabels = labels;
+        }
+        
+        datasets.push({
+            label: `${target.name} (${target.address}:${target.port})`,
+            data: latencies,
+            borderColor: colors[index % colors.length],
+            backgroundColor: colors[index % colors.length] + '20',
+            fill: false,
+            tension: 0.1
+        });
+    });
+    
+    latencyChart.data.labels = allLabels;
+    latencyChart.data.datasets = datasets;
+    latencyChart.update();
+}
+
+// 更新丢包率图
+function updatePacketLossChart(targetData) {
+    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+    const datasets = [];
+    let allLabels = [];
+    
+    Object.values(targetData).forEach((target, index) => {
+        const sortedData = target.data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const labels = sortedData.map(item => new Date(item.timestamp).toLocaleTimeString());
+        const packetLoss = sortedData.map(item => (item.packet_loss || 0) * 100);
+        
+        if (labels.length > allLabels.length) {
+            allLabels = labels;
+        }
+        
+        datasets.push({
+            label: `${target.name} (${target.address}:${target.port})`,
+            data: packetLoss,
+            borderColor: colors[index % colors.length],
+            backgroundColor: colors[index % colors.length] + '20',
+            fill: false,
+            tension: 0.1
+        });
+    });
+    
+    packetLossChart.data.labels = allLabels;
+    packetLossChart.data.datasets = datasets;
+    packetLossChart.update();
+}
+
+// 更新对比图
+function updateComparisonChart(targetData) {
+    const labels = [];
+    const latencies = [];
+    const losses = [];
+    
+    Object.values(targetData).forEach(target => {
+        if (target.data.length > 0) {
+            const avgLatency = target.data.reduce((sum, item) => sum + (item.rtt_avg || 0), 0) / target.data.length;
+            const avgLoss = target.data.reduce((sum, item) => sum + (item.packet_loss || 0), 0) / target.data.length * 100;
+            
+            labels.push(`${target.name}`);
+            latencies.push(avgLatency.toFixed(1));
+            losses.push(avgLoss.toFixed(1));
+        }
+    });
+    
+    comparisonChart.data.labels = labels;
+    comparisonChart.data.datasets[0].data = latencies;
+    comparisonChart.data.datasets[1].data = losses;
+    comparisonChart.update();
+}
+
+// 更新汇总表
+function updateSummaryTable(targetData) {
+    let html = '';
+    
+    Object.values(targetData).forEach(target => {
+        if (target.data.length > 0) {
+            const latest = target.data[target.data.length - 1];
+            const avgLatency = target.data.reduce((sum, item) => sum + (item.rtt_avg || 0), 0) / target.data.length;
+            const avgLoss = target.data.reduce((sum, item) => sum + (item.packet_loss || 0), 0) / target.data.length * 100;
+            
+            const status = avgLoss < 5 ? 
+                '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-green"><i class="mdui-icon material-icons">check_circle</i></span><span class="mdui-chip-title">正常</span></span>' :
+                '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-red"><i class="mdui-icon material-icons">error</i></span><span class="mdui-chip-title">异常</span></span>';
+            
+            html += `<tr>
+                <td><strong>${target.name}</strong><br><small>${target.address}:${target.port}</small></td>
+                <td>${status}</td>
+                <td>${avgLatency.toFixed(1)}ms</td>
+                <td>${avgLoss.toFixed(1)}%</td>
+                <td>${new Date(latest.timestamp).toLocaleString()}</td>
+            </tr>`;
+        }
+    });
+    
+    if (html === '') {
+        html = '<tr><td colspan="5">暂无监测数据</td></tr>';
+    }
+    
+    document.getElementById('summaryTable').innerHTML = html;
+}
+
+// 页面加载完成后初始化图表
 window.addEventListener('load', () => {
     {%if configs.length > 0%}
-    loadDataPreview();
+    initCharts();
+    updateCharts();
+    
+    // 设置定时刷新（每30秒）
+    setInterval(updateCharts, 30000);
     {%endif%}
 });
 </script>

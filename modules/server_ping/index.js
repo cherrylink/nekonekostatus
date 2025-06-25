@@ -1,8 +1,119 @@
 "use strict";
 const ssh=require("../../ssh");
+const schedule=require("node-schedule");
 
 module.exports=svr=>{
 const {db,pr}=svr.locals;
+
+// 每小时清理超过72小时的ping数据
+schedule.scheduleJob('0 * * * *', () => {
+    try {
+        const result = db.ping_data.cleanup(3); // 3天=72小时
+        console.log(`清理旧ping数据: 删除了${result.changes}条记录`);
+    } catch(e) {
+        console.error('清理ping数据失败:', e);
+    }
+});
+
+// 线路监测总览页面
+svr.get("/admin/line-monitoring",(req,res)=>{
+    res.render("admin/line_monitoring");
+});
+
+// 获取所有服务器列表API
+svr.get("/api/servers",(req,res)=>{
+    try {
+        const servers = db.servers.all();
+        const serverData = servers.map(server => ({
+            sid: server.sid,
+            name: server.name,
+            location: server.location,
+            type: server.type,
+            region: server.region
+        }));
+        res.json(pr(1, serverData));
+    } catch(e) {
+        res.json(pr(0, '获取服务器列表失败: ' + e.message));
+    }
+});
+
+// 实时监测数据流 (Server-Sent Events)
+svr.get("/api/ping-stream",(req,res)=>{
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+    
+    // 发送初始连接事件
+    res.write('data: ' + JSON.stringify({
+        type: 'connected',
+        message: '实时数据流已连接',
+        timestamp: new Date().toISOString()
+    }) + '\n\n');
+    
+    // 创建客户端标识
+    const clientId = Date.now() + Math.random();
+    console.log(`实时数据流客户端连接: ${clientId}`);
+    
+    // 保存客户端连接以便广播
+    if (!svr.locals.sseClients) {
+        svr.locals.sseClients = new Map();
+    }
+    svr.locals.sseClients.set(clientId, res);
+    
+    // 定期发送心跳
+    const heartbeat = setInterval(() => {
+        try {
+            res.write('data: ' + JSON.stringify({
+                type: 'heartbeat',
+                timestamp: new Date().toISOString()
+            }) + '\n\n');
+        } catch(e) {
+            clearInterval(heartbeat);
+            svr.locals.sseClients.delete(clientId);
+        }
+    }, 30000);
+    
+    // 客户端断开连接处理
+    req.on('close', () => {
+        console.log(`实时数据流客户端断开: ${clientId}`);
+        clearInterval(heartbeat);
+        svr.locals.sseClients.delete(clientId);
+    });
+    
+    req.on('end', () => {
+        console.log(`实时数据流结束: ${clientId}`);
+        clearInterval(heartbeat);
+        svr.locals.sseClients.delete(clientId);
+    });
+});
+
+// 广播函数
+if (!svr.locals.broadcast) {
+    svr.locals.broadcast = (eventType, data) => {
+        if (svr.locals.sseClients && svr.locals.sseClients.size > 0) {
+            const message = JSON.stringify({
+                type: eventType,
+                data: data,
+                timestamp: new Date().toISOString()
+            });
+            
+            console.log(`广播事件 ${eventType} 给 ${svr.locals.sseClients.size} 个客户端`);
+            
+            svr.locals.sseClients.forEach((clientRes, clientId) => {
+                try {
+                    clientRes.write('data: ' + message + '\n\n');
+                } catch(e) {
+                    console.log(`客户端 ${clientId} 连接异常，移除`);
+                    svr.locals.sseClients.delete(clientId);
+                }
+            });
+        }
+    };
+}
 
 // 获取服务器的监测配置
 svr.get("/admin/servers/:sid/ping-config",(req,res)=>{
@@ -162,6 +273,15 @@ svr.post("/api/ping-data",async(req,res)=>{
                 );
             }
             console.log('所有ping数据保存完成');
+            
+            // 广播实时数据更新通知
+            if (svr.locals.broadcast) {
+                svr.locals.broadcast('ping_data_update', {
+                    server_id: sid,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                });
+            }
         }
         
         res.json(pr(1, '数据接收成功'));
