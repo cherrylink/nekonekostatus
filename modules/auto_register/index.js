@@ -48,11 +48,12 @@ module.exports = svr => {
                 
                 db.servers.upd(sid, server_name || existingServer.name, updatedData, existingServer.top, existingServer.group_id);
                 
-                res.json(pr(1, '服务器信息已更新', {
+                res.json(pr(1, {
                     sid: sid,
                     api_key: updatedData.api.key,
                     port: port,
-                    status: 'updated'
+                    status: 'updated',
+                    message: '服务器信息已更新'
                 }));
                 return;
             }
@@ -105,13 +106,14 @@ module.exports = svr => {
             db.servers.ins(sid, final_name, serverData, maxTop + 1, 1, group_id);
             
             // 返回成功响应
-            res.json(pr(1, '服务器注册成功', {
+            res.json(pr(1, {
                 sid: sid,
                 name: final_name,
                 api_key: api_key,
                 port: port,
                 group_id: group_id,
-                status: 'registered'
+                status: 'registered',
+                message: '服务器注册成功'
             }));
             
         } catch (error) {
