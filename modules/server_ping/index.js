@@ -215,12 +215,28 @@ svr.get("/api/servers/:sid/ping-stats",(req,res)=>{
 // 测试API - 直接查询数据库
 svr.get("/api/ping-test",(req,res)=>{
     try {
-        const allData = db.ping_data.DB.prepare("SELECT * FROM ping_data ORDER BY timestamp DESC LIMIT 10").all();
+        // 检查表是否存在
+        const tables = db.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%ping%'").all();
+        console.log('ping相关表:', tables);
+        
+        // 检查ping_data表结构
+        const schema = db.DB.prepare("PRAGMA table_info(ping_data)").all();
+        console.log('ping_data表结构:', schema);
+        
+        // 查询数据
+        const allData = db.DB.prepare("SELECT * FROM ping_data ORDER BY timestamp DESC LIMIT 10").all();
         console.log('数据库中的ping数据:', allData);
-        res.json({status: 1, data: allData, count: allData.length});
+        
+        res.json({
+            status: 1, 
+            tables: tables,
+            schema: schema,
+            data: allData, 
+            count: allData.length
+        });
     } catch(e) {
         console.error('查询失败:', e);
-        res.json({status: 0, error: e.message});
+        res.json({status: 0, error: e.message, stack: e.stack});
     }
 });
 }
