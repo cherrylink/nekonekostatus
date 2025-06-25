@@ -176,6 +176,8 @@ svr.get("/api/servers/:sid/ping-data",(req,res)=>{
     var {sid} = req.params;
     var {target_id, hours = 24} = req.query;
     
+    console.log(`获取ping数据请求: sid=${sid}, target_id=${target_id}, hours=${hours}`);
+    
     try {
         let data;
         if(target_id){
@@ -184,8 +186,10 @@ svr.get("/api/servers/:sid/ping-data",(req,res)=>{
             data = db.ping_data.getByServer(sid, parseInt(hours));
         }
         
+        console.log(`返回ping数据: ${data.length}条记录`);
         res.json(pr(1, data));
     } catch(e) {
+        console.error('获取ping数据失败:', e);
         res.json(pr(0, '获取数据失败: ' + e.message));
     }
 });
@@ -205,6 +209,18 @@ svr.get("/api/servers/:sid/ping-stats",(req,res)=>{
         res.json(pr(1, stats));
     } catch(e) {
         res.json(pr(0, '获取统计失败: ' + e.message));
+    }
+});
+
+// 测试API - 直接查询数据库
+svr.get("/api/ping-test",(req,res)=>{
+    try {
+        const allData = db.ping_data.DB.prepare("SELECT * FROM ping_data ORDER BY timestamp DESC LIMIT 10").all();
+        console.log('数据库中的ping数据:', allData);
+        res.json({status: 1, data: allData, count: allData.length});
+    } catch(e) {
+        console.error('查询失败:', e);
+        res.json({status: 0, error: e.message});
     }
 });
 }
