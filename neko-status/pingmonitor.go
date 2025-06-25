@@ -120,25 +120,31 @@ func (pm *PingMonitor) monitorTarget(target PingTarget, stopChan chan bool) {
 
 // pingTarget 对单个目标执行ping
 func (pm *PingMonitor) pingTarget(target PingTarget) {
+	fmt.Printf("正在测试目标: %s (%s:%d)\n", target.Name, target.Address, target.Port)
+	
 	// 执行TCP ping，测试5次，超时5秒
 	results := tcpping.TCPPingBoth(target.ID, target.Address, target.Port, 5, 5*time.Second)
+	
+	fmt.Printf("测试完成，获得%d个结果\n", len(results))
 	
 	if len(results) > 0 {
 		// 上报结果到后端
 		pm.reportResults(results)
 		
 		for _, result := range results {
-			if Config.Debug {
-				fmt.Printf("监测结果 - 目标:%s IPv%d 丢包率:%.1f%% 平均延迟:%.1fms\n", 
-					target.Name, result.IPVersion, result.PacketLoss*100, result.RTTAvg)
-			}
+			fmt.Printf("监测结果 - 目标:%s IPv%d 发送:%d 接收:%d 丢包率:%.1f%% 平均延迟:%.1fms\n", 
+				target.Name, result.IPVersion, result.PacketsSent, result.PacketsReceived,
+				result.PacketLoss*100, result.RTTAvg)
 		}
+	} else {
+		fmt.Printf("目标 %s 测试失败，无结果\n", target.Name)
 	}
 }
 
 // reportResults 上报监测结果到后端
 func (pm *PingMonitor) reportResults(results []tcpping.PingResult) {
 	if Config.Url == "" || Config.ServerID == "" {
+		fmt.Printf("上报失败: URL=%s, ServerID=%s\n", Config.Url, Config.ServerID)
 		return
 	}
 	
@@ -151,26 +157,22 @@ func (pm *PingMonitor) reportResults(results []tcpping.PingResult) {
 	// 序列化数据
 	jsonData, err := json.Marshal(reportData)
 	if err != nil {
-		if Config.Debug {
-			fmt.Printf("序列化ping数据失败: %v\n", err)
-		}
+		fmt.Printf("序列化ping数据失败: %v\n", err)
 		return
 	}
 	
 	// 发送到后端
 	url := Config.Url + "/api/ping-data"
+	fmt.Printf("正在上报ping数据到: %s\n", url)
+	
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		if Config.Debug {
-			fmt.Printf("上报ping数据失败: %v\n", err)
-		}
+		fmt.Printf("上报ping数据失败: %v\n", err)
 		return
 	}
 	defer resp.Body.Close()
 	
-	if Config.Debug {
-		fmt.Printf("ping数据上报成功: %d个结果\n", len(results))
-	}
+	fmt.Printf("ping数据上报成功: %d个结果, HTTP状态: %d\n", len(results), resp.StatusCode)
 }
 
 // 全局监测器实例
