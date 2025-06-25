@@ -8,7 +8,8 @@ const {servers}=require("./servers")(DB),
     {traffic,lt}=require("./traffic")(DB),
     {load_m,load_h}=require("./load")(DB),
     {ssh_scripts}=require("./ssh_scripts")(DB),
-    {setting}=require("./setting")(DB);
+    {setting}=require("./setting")(DB),
+    {groups}=require("./groups")(DB);
 function getServers(){return servers.all();}
 return {
     DB,
@@ -17,5 +18,6 @@ return {
     load_m,load_h,
     ssh_scripts,
     setting,
+    groups,
 };
 }

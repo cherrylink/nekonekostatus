@@ -4,17 +4,19 @@ const {initServer,updateServer}=require("./func"),
 module.exports=svr=>{
 const {db,setting,pr,parseNumber,uuid}=svr.locals;
 svr.post("/admin/servers/add",async(req,res)=>{
-    var {sid,name,data,top,status}=req.body;
+    var {sid,name,data,top,status,group_id}=req.body;
     if(!sid)sid=uuid.v1();
-    db.servers.ins(sid,name,data,top,status);
+    db.servers.ins(sid,name,data,top,status,group_id);
     res.json(pr(1,sid));
 });
 svr.get("/admin/servers/add",(req,res)=>{
-    res.render(`admin/servers/add`,{});
+    res.render(`admin/servers/add`,{
+        groups: db.groups.all()
+    });
 });
 svr.post("/admin/servers/:sid/edit",async(req,res)=>{
-    var {sid}=req.params,{name,data,top,status}=req.body;
-    db.servers.upd(sid,name,data,top);
+    var {sid}=req.params,{name,data,top,status,group_id}=req.body;
+    db.servers.upd(sid,name,data,top,group_id);
     if(status!=null)db.servers.upd_status(sid,status);
     res.json(pr(1,'修改成功'));
 });
@@ -62,6 +64,7 @@ svr.get("/admin/servers/:sid",(req,res)=>{
     var {sid}=req.params,server=db.servers.get(sid);
     res.render(`admin/servers/edit`,{
         server,
+        groups: db.groups.all()
     });
 });
 svr.ws("/admin/servers/:sid/ws-ssh/:data",(ws,req)=>{

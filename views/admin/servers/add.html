@@ -17,6 +17,14 @@
                 <label class="mdui-textfield-label">name</label>
                 <input class="mdui-textfield-input" type="text" id='add_name'>
             </div>
+            <div class="mdui-col-xs-2 mdui-textfield">
+                <label class="mdui-textfield-label">分组</label>
+                <select class="mdui-textfield-input" id='add_group_id'>
+                    {%for group in groups%}
+                    <option value="{{group.id}}">{{group.name}}</option>
+                    {%endfor%}
+                </select>
+            </div>
         </div>
 
         <br>
@@ -99,7 +107,8 @@ async function add(){
         },
         device:V('add_device')
     };
-    var res=await postjson(`/admin/servers/add`,{sid,name,data});
+    var group_id = parseInt(V('add_group_id')) || 0;
+    var res=await postjson(`/admin/servers/add`,{sid,name,data,group_id});
     endloading();
     notice(res.data);
     if(res.status)redirect(`/admin/servers/${res.data}/`);

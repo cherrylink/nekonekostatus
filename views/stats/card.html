@@ -15,86 +15,107 @@
 .server-name-input{width:100%;border:none;background:transparent;font-size:1.2em;font-weight:500;}
 .server-name-input:focus{outline:none;background:rgba(0,0,0,0.1);padding:2px 4px;border-radius:2px;}
 </style>
-{%for sid,node in stats%}
-{%if node.stat!=-1%}
-    <div class="mdui-col">
-        <div class="mdui-card mt {%if node.stat==0%}mdui-text-color-grey offline{%endif%}">
-            <div class="mdui-card-primary">
-                <div class="mdui-card-primary-title mdui-text-truncate poh" title="{{node.name}}" href="/stats/{{sid}}/">
-                    {%if admin%}
-                    <span class="server-name" data-sid="{{sid}}" onclick="editServerName('{{sid}}', '{{node.name}}')">{{node.name}}</span>
-                    {%else%}
-                    {{node.name}}
-                    {%endif%}
+{%for group in groups%}
+  {%if statsByGroup[group.id].servers.length > 0%}
+    <div class="mdui-col-xs-12" style="margin: 16px 0;">
+        <div class="mdui-card" style="margin-bottom: 8px;">
+            <div class="mdui-card-primary" style="padding: 12px 16px;">
+                <div class="mdui-card-primary-title" style="font-size: 1.1em;">
+                    <i class="mdui-icon material-icons" style="margin-right: 8px; vertical-align: middle;">folder</i>
+                    {{group.name}}
+                    <span style="font-size: 0.8em; color: #666; margin-left: 8px;">({{statsByGroup[group.id].servers.length}}台)</span>
                 </div>
-            </div>
-            <div class="mdui-card-menu">
-                <i class="mdui-icon material-icons" id="{{sid}}_host">info_outline</i>
-                {%if admin%}
-                <a class="mdui-btn mdui-btn-icon" href="/admin/servers/{{sid}}/">
-                    <i class="mdui-icon material-icons">edit</i>
-                </a>
+                {%if group.description%}
+                <div class="mdui-card-primary-subtitle">{{group.description}}</div>
                 {%endif%}
-            </div>
-            <div class="mdui-card-content">
-                <ul class="mdui-list">
-                    <li class="mdui-list-item">
-                        <i class="mdui-list-item-icon mdui-icon material-icons">memory</i>
-                        <div class="mdui-list-item-content">
-                            <st class="mdui-list-item-title mdui-list-item-one-line">CPU <span id="{{sid}}_CPU">NaN</span></st>
-                            <div class="mdui-list-item-text" style="opacity:1;">
-                                <div class="mdui-progress">
-                                    <div id="{{sid}}_CPU_progress" class="mdui-progress-determinate mdui-color-indigo-400" style="width: 0%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="mdui-list-item" id="{{sid}}_MEM_item">
-                        <i class="mdui-list-item-icon mdui-icon material-icons">straighten</i>
-                        <div class="mdui-list-item-content">
-                            <at class="mdui-list-item-title mdui-list-item-one-line">MEM <span id="{{sid}}_MEM">NaN</span></at>
-                            <div class="mdui-list-item-text" style="opacity:1;">
-                                <div class="mdui-progress">
-                                    <div id="{{sid}}_MEM_progress" class="mdui-progress-determinate mdui-color-pink-400" style="width: 0%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="mdui-list-item">
-                        <i class="mdui-list-item-icon mdui-icon material-icons">swap_vert</i>
-                        <div class="mdui-list-item-content">
-                            <div class="mdui-list-item-title">下行</div>
-                            <div class="mdui-list-item-text mdui-list-item-one-line" style="opacity:1;">
-                                <st><span id="{{sid}}_NET_IN">NaN</span></st>
-                            </div>
-                        </div>
-                        <div class="mdui-list-item-content">
-                            <div class="mdui-list-item-title">上行</div>
-                            <div class="mdui-list-item-text mdui-list-item-one-line" style="opacity:1;">
-                                <at><span id="{{sid}}_NET_OUT">NaN</span></at>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="mdui-list-item">
-                        <i class="mdui-list-item-icon mdui-icon material-icons">swap_horiz</i>
-                        <div class="mdui-list-item-content">
-                            <div class="mdui-list-item-title mdui-list-item-one-line">总下行</div>
-                            <div class="mdui-list-item-text" style="opacity:1;">
-                                <st><span id="{{sid}}_NET_IN_TOTAL">NaN</span></st>
-                            </div>
-                        </div>
-                        <div class="mdui-list-item-content">
-                            <div class="mdui-list-item-title mdui-list-item-one-line">总上行</div>
-                            <div class="mdui-list-item-text" style="opacity:1;">
-                                <at><span id="{{sid}}_NET_OUT_TOTAL">NaN</span></at>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
             </div>
         </div>
     </div>
-{%endif%}
+    
+    {%for server in statsByGroup[group.id].servers%}
+    {%set sid = server.sid%}
+    {%set node = statsByGroup[group.id].stats[sid]%}
+    {%if node.stat!=-1%}
+        <div class="mdui-col">
+            <div class="mdui-card mt {%if node.stat==0%}mdui-text-color-grey offline{%endif%}">
+                <div class="mdui-card-primary">
+                    <div class="mdui-card-primary-title mdui-text-truncate poh" title="{{node.name}}" href="/stats/{{sid}}/">
+                        {%if admin%}
+                        <span class="server-name" data-sid="{{sid}}" onclick="editServerName('{{sid}}', '{{node.name}}')">{{node.name}}</span>
+                        {%else%}
+                        {{node.name}}
+                        {%endif%}
+                    </div>
+                </div>
+                <div class="mdui-card-menu">
+                    <i class="mdui-icon material-icons" id="{{sid}}_host">info_outline</i>
+                    {%if admin%}
+                    <a class="mdui-btn mdui-btn-icon" href="/admin/servers/{{sid}}/">
+                        <i class="mdui-icon material-icons">edit</i>
+                    </a>
+                    {%endif%}
+                </div>
+                <div class="mdui-card-content">
+                    <ul class="mdui-list">
+                        <li class="mdui-list-item">
+                            <i class="mdui-list-item-icon mdui-icon material-icons">memory</i>
+                            <div class="mdui-list-item-content">
+                                <st class="mdui-list-item-title mdui-list-item-one-line">CPU <span id="{{sid}}_CPU">NaN</span></st>
+                                <div class="mdui-list-item-text" style="opacity:1;">
+                                    <div class="mdui-progress">
+                                        <div id="{{sid}}_CPU_progress" class="mdui-progress-determinate mdui-color-indigo-400" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="mdui-list-item" id="{{sid}}_MEM_item">
+                            <i class="mdui-list-item-icon mdui-icon material-icons">straighten</i>
+                            <div class="mdui-list-item-content">
+                                <at class="mdui-list-item-title mdui-list-item-one-line">MEM <span id="{{sid}}_MEM">NaN</span></at>
+                                <div class="mdui-list-item-text" style="opacity:1;">
+                                    <div class="mdui-progress">
+                                        <div id="{{sid}}_MEM_progress" class="mdui-progress-determinate mdui-color-pink-400" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="mdui-list-item">
+                            <i class="mdui-list-item-icon mdui-icon material-icons">swap_vert</i>
+                            <div class="mdui-list-item-content">
+                                <div class="mdui-list-item-title">下行</div>
+                                <div class="mdui-list-item-text mdui-list-item-one-line" style="opacity:1;">
+                                    <st><span id="{{sid}}_NET_IN">NaN</span></st>
+                                </div>
+                            </div>
+                            <div class="mdui-list-item-content">
+                                <div class="mdui-list-item-title">上行</div>
+                                <div class="mdui-list-item-text mdui-list-item-one-line" style="opacity:1;">
+                                    <at><span id="{{sid}}_NET_OUT">NaN</span></at>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="mdui-list-item">
+                            <i class="mdui-list-item-icon mdui-icon material-icons">swap_horiz</i>
+                            <div class="mdui-list-item-content">
+                                <div class="mdui-list-item-title mdui-list-item-one-line">总下行</div>
+                                <div class="mdui-list-item-text" style="opacity:1;">
+                                    <st><span id="{{sid}}_NET_IN_TOTAL">NaN</span></st>
+                                </div>
+                            </div>
+                            <div class="mdui-list-item-content">
+                                <div class="mdui-list-item-title mdui-list-item-one-line">总上行</div>
+                                <div class="mdui-list-item-text" style="opacity:1;">
+                                    <at><span id="{{sid}}_NET_OUT_TOTAL">NaN</span></at>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {%endif%}
+    {%endfor%}
+  {%endif%}
 {%endfor%}
 </div>
 {%endblock%}

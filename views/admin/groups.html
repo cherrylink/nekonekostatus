@@ -1,0 +1,284 @@
+{% extends "../base.html" %}
+{% block title %}分组管理{% endblock %}
+{% block head %}
+<style>
+.group-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: white;
+    transition: all 0.3s;
+}
+.group-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.group-name {
+    font-size: 18px;
+    font-weight: 500;
+    color: #333;
+}
+.group-description {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+.group-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+    color: #888;
+}
+.group-actions {
+    display: flex;
+    gap: 8px;
+}
+.add-group-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+}
+.default-group {
+    border-left: 4px solid #2196F3;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mdui-container" style="margin-top: 24px;">
+    <div class="mdui-row">
+        <div class="mdui-col-xs-12">
+            <div class="mdui-card">
+                <div class="mdui-card-header">
+                    <div class="mdui-card-header-title">分组管理</div>
+                    <div class="mdui-card-header-subtitle">管理服务器分组</div>
+                </div>
+                <div class="mdui-card-content">
+                    <div id="groups-container">
+                        {% for group in groups %}
+                        <div class="group-item {% if group.id == 0 %}default-group{% endif %}" data-group-id="{{ group.id }}">
+                            <div class="group-header">
+                                <div>
+                                    <div class="group-name">{{ group.name }}</div>
+                                    {% if group.description %}
+                                    <div class="group-description">{{ group.description }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="group-actions">
+                                    {% if group.id != 0 %}
+                                    <button class="mdui-btn mdui-btn-icon" onclick="editGroup({{ group.id }})">
+                                        <i class="mdui-icon material-icons">edit</i>
+                                    </button>
+                                    <button class="mdui-btn mdui-btn-icon" onclick="deleteGroup({{ group.id }})">
+                                        <i class="mdui-icon material-icons">delete</i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="group-stats">
+                                <span><i class="mdui-icon material-icons">computer</i> {{ group.server_count }} 台服务器</span>
+                                <span><i class="mdui-icon material-icons">sort</i> 排序: {{ group.sort_order }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加分组按钮 -->
+<button class="mdui-fab mdui-color-theme-accent add-group-btn" onclick="showAddGroupDialog()">
+    <i class="mdui-icon material-icons">add</i>
+</button>
+
+<!-- 添加分组对话框 -->
+<div class="mdui-dialog" id="add-group-dialog">
+    <div class="mdui-dialog-title">添加分组</div>
+    <div class="mdui-dialog-content">
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">分组名称</label>
+            <input class="mdui-textfield-input" type="text" id="group-name" required/>
+        </div>
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">分组描述</label>
+            <textarea class="mdui-textfield-input" id="group-description"></textarea>
+        </div>
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">排序</label>
+            <input class="mdui-textfield-input" type="number" id="group-sort" value="0"/>
+        </div>
+    </div>
+    <div class="mdui-dialog-actions">
+        <button class="mdui-btn mdui-ripple" mdui-dialog-close>取消</button>
+        <button class="mdui-btn mdui-ripple" onclick="addGroup()">添加</button>
+    </div>
+</div>
+
+<!-- 编辑分组对话框 -->
+<div class="mdui-dialog" id="edit-group-dialog">
+    <div class="mdui-dialog-title">编辑分组</div>
+    <div class="mdui-dialog-content">
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">分组名称</label>
+            <input class="mdui-textfield-input" type="text" id="edit-group-name" required/>
+        </div>
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">分组描述</label>
+            <textarea class="mdui-textfield-input" id="edit-group-description"></textarea>
+        </div>
+        <div class="mdui-textfield mdui-textfield-floating-label">
+            <label class="mdui-textfield-label">排序</label>
+            <input class="mdui-textfield-input" type="number" id="edit-group-sort"/>
+        </div>
+    </div>
+    <div class="mdui-dialog-actions">
+        <button class="mdui-btn mdui-ripple" mdui-dialog-close>取消</button>
+        <button class="mdui-btn mdui-ripple" onclick="updateGroup()">保存</button>
+    </div>
+</div>
+
+<script>
+let addDialog, editDialog;
+let currentEditGroupId = null;
+
+// 初始化对话框
+document.addEventListener('DOMContentLoaded', function() {
+    addDialog = new mdui.Dialog('#add-group-dialog');
+    editDialog = new mdui.Dialog('#edit-group-dialog');
+});
+
+// 显示添加分组对话框
+function showAddGroupDialog() {
+    document.getElementById('group-name').value = '';
+    document.getElementById('group-description').value = '';
+    document.getElementById('group-sort').value = '0';
+    addDialog.open();
+}
+
+// 添加分组
+function addGroup() {
+    const name = document.getElementById('group-name').value.trim();
+    const description = document.getElementById('group-description').value.trim();
+    const sort_order = document.getElementById('group-sort').value;
+    
+    if (!name) {
+        mdui.snackbar({message: '请输入分组名称'});
+        return;
+    }
+    
+    fetch('/admin/groups/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            sort_order: parseInt(sort_order) || 0
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 1) {
+            mdui.snackbar({message: '添加成功'});
+            addDialog.close();
+            location.reload();
+        } else {
+            mdui.snackbar({message: data.msg || '添加失败'});
+        }
+    })
+    .catch(error => {
+        mdui.snackbar({message: '网络错误'});
+    });
+}
+
+// 编辑分组
+function editGroup(groupId) {
+    currentEditGroupId = groupId;
+    
+    // 获取当前分组信息
+    fetch('/api/groups')
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 1) {
+            const group = data.data.find(g => g.id === groupId);
+            if (group) {
+                document.getElementById('edit-group-name').value = group.name;
+                document.getElementById('edit-group-description').value = group.description || '';
+                document.getElementById('edit-group-sort').value = group.sort_order || 0;
+                editDialog.open();
+            }
+        }
+    });
+}
+
+// 更新分组
+function updateGroup() {
+    const name = document.getElementById('edit-group-name').value.trim();
+    const description = document.getElementById('edit-group-description').value.trim();
+    const sort_order = document.getElementById('edit-group-sort').value;
+    
+    if (!name) {
+        mdui.snackbar({message: '请输入分组名称'});
+        return;
+    }
+    
+    fetch(`/admin/groups/${currentEditGroupId}/edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            sort_order: parseInt(sort_order) || 0
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 1) {
+            mdui.snackbar({message: '修改成功'});
+            editDialog.close();
+            location.reload();
+        } else {
+            mdui.snackbar({message: data.msg || '修改失败'});
+        }
+    })
+    .catch(error => {
+        mdui.snackbar({message: '网络错误'});
+    });
+}
+
+// 删除分组
+function deleteGroup(groupId) {
+    mdui.confirm('确定要删除这个分组吗？该分组下的服务器将移动到默认分组。', 
+        function() {
+            fetch(`/admin/groups/${groupId}/del`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 1) {
+                    mdui.snackbar({message: '删除成功'});
+                    location.reload();
+                } else {
+                    mdui.snackbar({message: data.msg || '删除失败'});
+                }
+            })
+            .catch(error => {
+                mdui.snackbar({message: '网络错误'});
+            });
+        }
+    );
+}
+</script>
+{% endblock %}

@@ -14,9 +14,42 @@ function getStats(isAdmin=false){
 }
 svr.get("/",(req,res)=>{
     let {theme=db.setting.get("theme")||"card"}=req.query;
+    
+    // 获取分组化的服务器列表
+    const groupedServers = db.servers.getAllGrouped();
+    const groups = db.groups.all();
+    
+    // 按分组组织服务器和统计数据
+    const serversByGroup = {};
+    const statsByGroup = {};
+    
+    groups.forEach(group => {
+        serversByGroup[group.id] = [];
+        statsByGroup[group.id] = {
+            group: group,
+            servers: [],
+            stats: {}
+        };
+    });
+    
+    groupedServers.forEach(server => {
+        if (server.status == 1 || (server.status == 2 && req.admin)) {
+            const groupId = server.group_id || 0;
+            serversByGroup[groupId].push(server);
+            
+            if (stats[server.sid]) {
+                statsByGroup[groupId].stats[server.sid] = stats[server.sid];
+                statsByGroup[groupId].servers.push(server);
+            }
+        }
+    });
+    
     res.render(`stats/${theme}`,{
         stats:getStats(req.admin),
-        admin:req.admin
+        admin:req.admin,
+        groups: groups,
+        serversByGroup: serversByGroup,
+        statsByGroup: statsByGroup
     });
 });
 svr.get("/stats/data",(req,res)=>{res.json(getStats(req.admin));});
