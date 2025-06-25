@@ -27,8 +27,18 @@ type ASNInfo struct {
 	City    string `json:"city"`
 }
 
-// 获取公网IP的ASN信息
+// ASN缓存变量
+var (
+	cachedASNInfo ASNInfo
+	asnCached     bool = false
+)
+
+// 获取公网IP的ASN信息（带缓存）
 func getASNInfo() ASNInfo {
+	// 如果已经缓存，直接返回
+	if asnCached {
+		return cachedASNInfo
+	}
 	// 首先获取公网IP
 	publicIP := getPublicIP()
 	if publicIP == "" {
@@ -39,18 +49,33 @@ func getASNInfo() ASNInfo {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(fmt.Sprintf("https://ipinfo.io/%s/json", publicIP))
 	if err != nil {
-		return ASNInfo{IP: publicIP}
+		// 获取失败，缓存基本IP信息避免重复请求
+		result := ASNInfo{IP: publicIP}
+		cachedASNInfo = result
+		asnCached = true
+		fmt.Printf("ASN信息获取失败，仅缓存IP: %s\n", publicIP)
+		return result
 	}
 	defer resp.Body.Close()
 	
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return ASNInfo{IP: publicIP}
+		// 获取失败，缓存基本IP信息避免重复请求
+		result := ASNInfo{IP: publicIP}
+		cachedASNInfo = result
+		asnCached = true
+		fmt.Printf("ASN信息解析失败，仅缓存IP: %s\n", publicIP)
+		return result
 	}
 	
 	var info map[string]interface{}
 	if err := json.Unmarshal(body, &info); err != nil {
-		return ASNInfo{IP: publicIP}
+		// 获取失败，缓存基本IP信息避免重复请求
+		result := ASNInfo{IP: publicIP}
+		cachedASNInfo = result
+		asnCached = true
+		fmt.Printf("ASN信息JSON解析失败，仅缓存IP: %s\n", publicIP)
+		return result
 	}
 	
 	result := ASNInfo{IP: publicIP}
@@ -70,6 +95,11 @@ func getASNInfo() ASNInfo {
 	if city, ok := info["city"].(string); ok {
 		result.City = city
 	}
+	
+	// 缓存获取成功的ASN信息
+	cachedASNInfo = result
+	asnCached = true
+	fmt.Printf("ASN信息获取成功并已缓存: %s %s %s\n", result.IP, result.ASN, result.Org)
 	
 	return result
 }
