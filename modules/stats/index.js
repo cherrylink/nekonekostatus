@@ -107,7 +107,9 @@ async function update(server){
         stats[sid]={name:server.name,stat},fails[sid]=0;
         if(notice){
             // console.log(`#恢复 ${server.name} ${new Date().toLocaleString()}`);
-            bot.funcs.notice(`#恢复 ${server.name} ${new Date().toLocaleString()}`);
+            if(bot && bot.funcs) {
+                bot.funcs.notice(`#恢复 ${server.name} ${new Date().toLocaleString()}`);
+            }
         }
         // if(stat.net.delta&&stat.net.delta.in>stat.net.delta.out*5&&stat.net.delta.in>15*1024*1024){
         //     if(highDown[sid]){
@@ -131,7 +133,9 @@ async function update(server){
         }
         if(notice){
             // console.log(`#掉线 ${server.name} ${new Date().toLocaleString()}`);
-            bot.funcs.notice(`#掉线 ${server.name} ${new Date().toLocaleString()}`);
+            if(bot && bot.funcs) {
+                bot.funcs.notice(`#掉线 ${server.name} ${new Date().toLocaleString()}`);
+            }
         }
     }
 }
