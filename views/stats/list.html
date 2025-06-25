@@ -26,44 +26,60 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
         </tr>
     </thead>
     <tbody>
-    {%for sid,node in stats%}
-    {%if node.stat!=-1%}
-    <tr class="{%if node.stat==0%}offline{%endif%}">
-        <td class="{%if node.stat==0%}mdui-text-color-grey{%endif%}">
-            {%if admin%}
-            <span class="server-name" data-sid="{{sid}}" onclick="editServerName('{{sid}}', '{{node.name}}')">{{node.name}}</span>
-            {%else%}
-            <a href="/stats/{{sid}}/">{{node.name}}</a>
-            {%endif%}
-        </td>
-        <td><st><span id="{{sid}}_NET_IN" style="max-width: fit-content;">NaN</span></st></td>
-        <td><at><span id="{{sid}}_NET_OUT" style="max-width: fit-content;">NaN</span></at></td>
-        <td><st><span id="{{sid}}_NET_IN_TOTAL" style="max-width: fit-content;">NaN</span></st></td>
-        <td><at><span id="{{sid}}_NET_OUT_TOTAL" style="max-width: fit-content;">NaN</span></at></td>
-        <td class="progress">
-            <div class="mdui-progress" style="height: 30px;">
-                <div id="{{sid}}_CPU_progress" class="mdui-progress-determinate mdui-color-indigo-400" style="width: 0%">
-                    <span id="{{sid}}_CPU" class="mdui-text-truncate progress-text">NaN</span>
+    {%for group in groups%}
+      {%if statsByGroup[group.id].servers.length > 0%}
+        <tr class="mdui-color-grey-100">
+            <td colspan="8" style="font-weight: bold; padding: 12px;">
+                <i class="mdui-icon material-icons" style="vertical-align: middle; margin-right: 8px;">folder</i>
+                {{group.name}}
+                <span style="font-size: 0.9em; color: #666; margin-left: 8px;">({{statsByGroup[group.id].servers.length}}台)</span>
+                {%if group.description%}
+                <span style="font-size: 0.8em; color: #999; margin-left: 8px;">- {{group.description}}</span>
+                {%endif%}
+            </td>
+        </tr>
+        {%for server in statsByGroup[group.id].servers%}
+        {%set sid = server.sid%}
+        {%set node = statsByGroup[group.id].stats[sid]%}
+        {%if node.stat!=-1%}
+        <tr class="{%if node.stat==0%}offline{%endif%}">
+            <td class="{%if node.stat==0%}mdui-text-color-grey{%endif%}" style="padding-left: 24px;">
+                {%if admin%}
+                <span class="server-name" data-sid="{{sid}}" onclick="editServerName('{{sid}}', '{{node.name}}')">{{node.name}}</span>
+                {%else%}
+                <a href="/stats/{{sid}}/">{{node.name}}</a>
+                {%endif%}
+            </td>
+            <td><st><span id="{{sid}}_NET_IN" style="max-width: fit-content;">NaN</span></st></td>
+            <td><at><span id="{{sid}}_NET_OUT" style="max-width: fit-content;">NaN</span></at></td>
+            <td><st><span id="{{sid}}_NET_IN_TOTAL" style="max-width: fit-content;">NaN</span></st></td>
+            <td><at><span id="{{sid}}_NET_OUT_TOTAL" style="max-width: fit-content;">NaN</span></at></td>
+            <td class="progress">
+                <div class="mdui-progress" style="height: 30px;">
+                    <div id="{{sid}}_CPU_progress" class="mdui-progress-determinate mdui-color-indigo-400" style="width: 0%">
+                        <span id="{{sid}}_CPU" class="mdui-text-truncate progress-text">NaN</span>
+                    </div>
                 </div>
-            </div>
-        </td>
-        <td class="progress">
-            <div class="mdui-progress" id="{{sid}}_MEM_item" style="height: 30px;background-color: #c0929d3f;">
-                <div id="{{sid}}_MEM_progress" class="mdui-progress-determinate mdui-color-pink-400" style="width: 0%">
-                    <span id="{{sid}}_MEM" class="mdui-text-truncate progress-text">NaN</span>
+            </td>
+            <td class="progress">
+                <div class="mdui-progress" id="{{sid}}_MEM_item" style="height: 30px;background-color: #c0929d3f;">
+                    <div id="{{sid}}_MEM_progress" class="mdui-progress-determinate mdui-color-pink-400" style="width: 0%">
+                        <span id="{{sid}}_MEM" class="mdui-text-truncate progress-text">NaN</span>
+                    </div>
                 </div>
-            </div>
-        </td>
-        <td>
-            <i class="mdui-icon material-icons" id="{{sid}}_host">info_outline</i>
-            {%if admin%}
-            <a class="mdui-btn mdui-btn-icon" href="/admin/servers/{{sid}}/">
-                <i class="mdui-icon material-icons">edit</i>
-            </a>
-            {%endif%}
-        </td>
-    </tr>
-    {%endif%}
+            </td>
+            <td>
+                <i class="mdui-icon material-icons" id="{{sid}}_host">info_outline</i>
+                {%if admin%}
+                <a class="mdui-btn mdui-btn-icon" href="/admin/servers/{{sid}}/">
+                    <i class="mdui-icon material-icons">edit</i>
+                </a>
+                {%endif%}
+            </td>
+        </tr>
+        {%endif%}
+        {%endfor%}
+      {%endif%}
     {%endfor%}
     </tbody>
 </table>
