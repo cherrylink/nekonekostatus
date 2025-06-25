@@ -51,7 +51,8 @@ svr.post("/admin/servers/:sid/update",async(req,res)=>{
 });
 svr.get("/admin/servers",(req,res)=>{
     res.render("admin/servers",{
-        servers:db.servers.all()
+        servers:db.servers.all(),
+        groups:db.groups.all()
     })
 });
 svr.post("/admin/servers/ord",(req,res)=>{

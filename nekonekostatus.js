@@ -66,6 +66,11 @@ svr.get('/admin/db',(req,res)=>{
     db.DB.backup(path).then(()=>{res.sendFile(path)});
 });
 
+// Agent 安装脚本下载
+svr.get('/install-agent.sh',(req,res)=>{
+    res.sendFile(__dirname + '/install-agent.sh');
+});
+
 var bot=null;
 if(setting.bot&&setting.bot.token){
     bot=require("./bot")(setting.bot.token,setting.bot.chatIds);

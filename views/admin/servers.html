@@ -3,6 +3,30 @@
 {% extends "../base.html" %}
 
 {% block content %}
+<!-- Agent 自动注册帮助信息 -->
+<div class="mdui-card" style="margin: 16px 0; background: #e8f5e8;">
+    <div class="mdui-card-content" style="padding: 12px 16px;">
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <i class="mdui-icon material-icons" style="color: #4CAF50; margin-right: 8px;">info</i>
+            <strong>Agent 自动注册</strong>
+            <button class="mdui-btn mdui-btn-dense" onclick="toggleAutoRegisterHelp()" style="margin-left: auto; font-size: 12px;">
+                显示命令
+            </button>
+        </div>
+        <div id="auto-register-help" style="display: none;">
+            <div style="background: #333; color: #fff; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 13px; margin-top: 8px;">
+                # 基本自动注册<br>
+                curl -sSL {{request.protocol}}://{{request.get_header('host')}}/install-agent.sh | bash -s -- --panel={{request.protocol}}://{{request.get_header('host')}}<br><br>
+                # 指定分组和名称<br>
+                curl -sSL {{request.protocol}}://{{request.get_header('host')}}/install-agent.sh | bash -s -- --panel={{request.protocol}}://{{request.get_header('host')}} --group=生产环境 --name=Web-01
+            </div>
+            <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
+                在目标服务器运行上述命令，服务器将自动注册到面板并开始监控
+            </p>
+        </div>
+    </div>
+</div>
+
 <div class="mdui-fab-wrapper" mdui-fab="{trigger: 'hover'}">
     <button class="mdui-fab mdui-color-blue-grey-600">
         <i class="mdui-icon material-icons">menu</i>
@@ -24,17 +48,36 @@
 <table class="mdui-table">
     <thead>
         <tr>
-            <th>排序</th><th>名称</th><th>域名/IP</th><th>状态</th><th>操作</th>
+            <th>排序</th><th>名称</th><th>分组</th><th>域名/IP</th><th>状态</th><th>类型</th><th>操作</th>
         </tr>
     </thead>
     <tbody id="servers">
     {%set stas={'1':'<st>正常</st>','2':'<gt>对外隐藏</gt>','0':'<at>不可用</at>'}%}
     {%for server in servers%}
+        {%set serverGroup = groups|selectattr("id", "equalto", server.group_id)|first%}
         <tr sid="{{server.sid}}">
             <td><i class="handle mdui-icon material-icons poh">drag_handle</i></td>
             <td class="ccp">{{server.name}}</td>
+            <td class="ccp">
+                <span class="mdui-chip" style="background-color: #e3f2fd; font-size: 12px;">
+                    <span class="mdui-chip-title">{{serverGroup.name if serverGroup else '默认分组'}}</span>
+                </span>
+            </td>
             <td class="ccp">{{server.data.ssh.host}}</td>
             <td>{{stas[server.status]|safe}}</td>
+            <td>
+                {%if server.data.auto_registered%}
+                <span class="mdui-chip mdui-color-green-50" style="font-size: 12px;">
+                    <i class="mdui-icon material-icons" style="font-size: 14px;">add_circle</i>
+                    <span class="mdui-chip-title">自动注册</span>
+                </span>
+                {%else%}
+                <span class="mdui-chip" style="background-color: #f5f5f5; font-size: 12px;">
+                    <i class="mdui-icon material-icons" style="font-size: 14px;">person_add</i>
+                    <span class="mdui-chip-title">手动添加</span>
+                </span>
+                {%endif%}
+            </td>
             <td>
                 <a class="mdui-btn mdui-btn-icon" mdui-tooltip="{content:'安装'}" onclick="init('{{server.sid}}')">
                     <i class="mdui-icon material-icons">redo</i>
@@ -87,6 +130,18 @@ async function del(sid){
     endloading();
     notice(res.data);
     if(res.status)refreshPage();
+}
+
+function toggleAutoRegisterHelp() {
+    const help = document.getElementById('auto-register-help');
+    const button = event.target;
+    if (help.style.display === 'none') {
+        help.style.display = 'block';
+        button.textContent = '隐藏命令';
+    } else {
+        help.style.display = 'none';
+        button.textContent = '显示命令';
+    }
 }
 </script>
 {% endblock %}

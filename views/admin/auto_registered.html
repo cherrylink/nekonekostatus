@@ -1,0 +1,184 @@
+{% extends "../base.html" %}
+{% block title %}自动注册服务器{% endblock %}
+{% block head %}
+<style>
+.server-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: white;
+}
+.server-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.server-name {
+    font-size: 18px;
+    font-weight: 500;
+    color: #333;
+}
+.server-info {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+.server-actions {
+    display: flex;
+    gap: 8px;
+}
+.auto-registered {
+    border-left: 4px solid #4CAF50;
+}
+.system-info {
+    background: #f5f5f5;
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 12px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mdui-container" style="margin-top: 24px;">
+    <div class="mdui-row">
+        <div class="mdui-col-xs-12">
+            <div class="mdui-card">
+                <div class="mdui-card-header">
+                    <div class="mdui-card-header-title">自动注册服务器</div>
+                    <div class="mdui-card-header-subtitle">管理通过自动注册功能添加的服务器</div>
+                </div>
+                <div class="mdui-card-content">
+                    <div class="mdui-card" style="margin-bottom: 16px; background: #e3f2fd;">
+                        <div class="mdui-card-primary" style="padding: 12px;">
+                            <div class="mdui-card-primary-title" style="font-size: 1em;">
+                                <i class="mdui-icon material-icons" style="margin-right: 8px; vertical-align: middle;">info</i>
+                                Agent 自动注册命令
+                            </div>
+                            <div class="mdui-card-primary-subtitle" style="margin-top: 8px;">
+                                在目标服务器上运行以下命令即可自动注册到面板：
+                            </div>
+                        </div>
+                        <div class="mdui-card-content" style="background: #333; color: #fff; font-family: monospace;">
+                            <div style="margin-bottom: 8px;">
+                                # 基本注册<br>
+                                curl -sSL {{request.protocol}}://{{request.get_header('host')}}/install-agent.sh | bash -s -- --panel={{request.protocol}}://{{request.get_header('host')}}
+                            </div>
+                            <div style="margin-bottom: 8px;">
+                                # 指定分组和名称<br>
+                                curl -sSL {{request.protocol}}://{{request.get_header('host')}}/install-agent.sh | bash -s -- --panel={{request.protocol}}://{{request.get_header('host')}} --group=生产环境 --name=Web-01
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if servers.length > 0 %}
+                    <div id="servers-container">
+                        {% for server in servers %}
+                        <div class="server-item auto-registered" data-sid="{{ server.sid }}">
+                            <div class="server-header">
+                                <div>
+                                    <div class="server-name">{{ server.name }}</div>
+                                    <div class="server-info">
+                                        <i class="mdui-icon material-icons" style="font-size: 16px; vertical-align: middle;">computer</i>
+                                        SID: {{ server.sid }}
+                                        {% if server.data.system_info and server.data.system_info.register_time %}
+                                        | 注册时间: {{ server.data.system_info.register_time }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="server-info">
+                                        <i class="mdui-icon material-icons" style="font-size: 16px; vertical-align: middle;">location_on</i>
+                                        {{ server.data.ssh.host }}:{{ server.data.api.port }}
+                                        | 状态: 
+                                        {% if server.status == 1 %}
+                                        <span style="color: #4CAF50;">正常</span>
+                                        {% elif server.status == 2 %}
+                                        <span style="color: #FF9800;">隐藏</span>
+                                        {% else %}
+                                        <span style="color: #F44336;">离线</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="server-actions">
+                                    <button class="mdui-btn mdui-btn-icon mdui-color-green" onclick="approveServer('{{ server.sid }}')" mdui-tooltip="{content: '批准'}">
+                                        <i class="mdui-icon material-icons">check</i>
+                                    </button>
+                                    <a class="mdui-btn mdui-btn-icon mdui-color-blue" href="/admin/servers/{{ server.sid }}/" mdui-tooltip="{content: '编辑'}">
+                                        <i class="mdui-icon material-icons">edit</i>
+                                    </a>
+                                    <button class="mdui-btn mdui-btn-icon mdui-color-red" onclick="rejectServer('{{ server.sid }}')" mdui-tooltip="{content: '删除'}">
+                                        <i class="mdui-icon material-icons">delete</i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {% if server.data.system_info %}
+                            <div class="system-info">
+                                <strong>系统信息:</strong>
+                                {% if server.data.system_info.os %}OS: {{ server.data.system_info.os }}/{{ server.data.system_info.arch }}{% endif %}
+                                {% if server.data.system_info.cpu and server.data.system_info.cpu.cores %}| CPU: {{ server.data.system_info.cpu.cores }}核{% endif %}
+                                {% if server.data.system_info.memory and server.data.system_info.memory.virtual %}| 内存: {{ (server.data.system_info.memory.virtual.total / 1024 / 1024 / 1024) | round(1) }}GB{% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="mdui-card" style="text-align: center; padding: 32px;">
+                        <i class="mdui-icon material-icons" style="font-size: 48px; color: #ccc;">computer</i>
+                        <p style="color: #666; margin-top: 16px;">暂无自动注册的服务器</p>
+                        <p style="color: #999; font-size: 14px;">使用上方的命令在目标服务器上安装 Agent</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 批准服务器
+function approveServer(sid) {
+    fetch(`/admin/auto-registered/${sid}/approve`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 1) {
+            mdui.snackbar({message: '服务器已批准'});
+            location.reload();
+        } else {
+            mdui.snackbar({message: data.msg || '操作失败'});
+        }
+    })
+    .catch(error => {
+        mdui.snackbar({message: '网络错误'});
+    });
+}
+
+// 拒绝服务器
+function rejectServer(sid) {
+    mdui.confirm('确定要删除这台服务器吗？', 
+        function() {
+            fetch(`/admin/auto-registered/${sid}/reject`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 1) {
+                    mdui.snackbar({message: '服务器已删除'});
+                    document.querySelector(`[data-sid="${sid}"]`).remove();
+                } else {
+                    mdui.snackbar({message: data.msg || '删除失败'});
+                }
+            })
+            .catch(error => {
+                mdui.snackbar({message: '网络错误'});
+            });
+        }
+    );
+}
+</script>
+{% endblock %}

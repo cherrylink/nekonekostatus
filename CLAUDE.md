@@ -115,3 +115,35 @@ The application uses auto-loaded modules from `/modules/`. Each module exports:
 - Cookie-based authentication with UUID tokens
 - Admin access required for server management
 - API key authentication for Go agent communication
+
+## Agent Auto-Registration
+
+### Quick Setup (No Manual Configuration)
+```bash
+# Basic auto-registration
+curl -sSL http://panel-url:5555/install-agent.sh | bash -s -- --panel=http://panel-url:5555
+
+# With custom group and name
+curl -sSL http://panel-url:5555/install-agent.sh | bash -s -- --panel=http://panel-url:5555 --group=Production --name=Web-01
+```
+
+### Manual Agent Registration
+```bash
+# Build and run Go agent with auto-registration
+cd neko-status
+go build -o neko-status
+./neko-status --auto-register --panel=http://panel-url:5555 --group=Production --name=Server-01
+```
+
+### Auto-Registration API
+- `POST /api/auto-register` - Accept agent registration requests
+- `GET /admin/auto-registered` - View auto-registered servers
+- Supports automatic group assignment and server naming
+- No manual token management required
+
+### Features
+- Zero-configuration deployment
+- Automatic server discovery
+- Group-based organization
+- Duplicate registration protection
+- System information collection
