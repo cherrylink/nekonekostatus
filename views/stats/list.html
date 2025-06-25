@@ -89,6 +89,9 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
                 <a class="mdui-btn mdui-btn-icon" href="/admin/servers/{{sid}}/">
                     <i class="mdui-icon material-icons">edit</i>
                 </a>
+                <button onclick="webssh('{{sid}}')" class="mdui-btn mdui-btn-icon" mdui-tooltip="{content:'Web SSH'}">
+                    <i class="mdui-icon material-icons">open_in_browser</i>
+                </button>
                 {%endif%}
             </td>
         </tr>
@@ -102,4 +105,7 @@ a{text-decoration:none;color:#333;}.mdui-theme-layout-dark a{color:#fff;}
 
 {%block js%}
 <script src="/js/stats.js"></script>
+{%if admin%}
+{%include "../webssh.html"%}
+{%endif%}
 {%endblock%}
