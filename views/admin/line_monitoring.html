@@ -1,22 +1,29 @@
-{% set title = "线路监测" %}
+{% set title = "网络ping线路监测" %}
 {%set admin = true%}
 {% extends "../base.html" %}
 
 {% block content %}
+<!-- 页面头部和导航 -->
 <div class="mdui-card">
     <div class="mdui-card-primary">
-        <div class="mdui-card-primary-title">线路质量监测</div>
+        <div class="mdui-card-primary-title">
+            <i class="mdui-icon material-icons">network_check</i>
+            网络ping线路监测
+        </div>
         <div class="mdui-card-primary-subtitle">
-        实时监测所有服务器的网络连接质量
-        <span id="connectionStatus" style="float: right;">
-            <span class="mdui-chip mdui-chip-dense">
-                <span class="mdui-chip-icon mdui-color-grey"><i class="mdui-icon material-icons">wifi_off</i></span>
-                <span class="mdui-chip-title">连接中...</span>
+            管理监测目标和查看网络质量数据
+            <span id="connectionStatus" style="float: right;">
+                <span class="mdui-chip mdui-chip-dense">
+                    <span class="mdui-chip-icon mdui-color-grey"><i class="mdui-icon material-icons">wifi_off</i></span>
+                    <span class="mdui-chip-title">连接中...</span>
+                </span>
             </span>
-        </span>
-    </div>
+        </div>
     </div>
     <div class="mdui-card-menu">
+        <button class="mdui-btn mdui-btn-icon mdui-color-theme-accent" onclick="openTargetManager()" mdui-tooltip="{content:'管理监测目标'}">
+            <i class="mdui-icon material-icons">settings</i>
+        </button>
         <div class="mdui-select" mdui-select="{position: 'bottom'}">
             <select id="timeRangeSelect" onchange="updateAllCharts()">
                 <option value="1">最近1小时</option>
@@ -32,6 +39,46 @@
         <button class="mdui-btn mdui-btn-icon" onclick="toggleAutoRefresh()" id="autoRefreshBtn" mdui-tooltip="{content:'自动刷新'}">
             <i class="mdui-icon material-icons">play_arrow</i>
         </button>
+    </div>
+</div>
+
+<!-- 快速统计卡片 -->
+<div class="mdui-row-xs-2 mdui-row-md-4 mt">
+    <div class="mdui-col">
+        <div class="mdui-card mdui-card-dense">
+            <div class="mdui-card-content">
+                <div class="mdui-text-color-theme-accent mdui-text-caption">活跃服务器</div>
+                <div class="mdui-text-headline" id="activeServersCount">-</div>
+                <div class="mdui-text-caption">台</div>
+            </div>
+        </div>
+    </div>
+    <div class="mdui-col">
+        <div class="mdui-card mdui-card-dense">
+            <div class="mdui-card-content">
+                <div class="mdui-text-color-green mdui-text-caption">正常连接</div>
+                <div class="mdui-text-headline" id="normalCount">-</div>
+                <div class="mdui-text-caption">个</div>
+            </div>
+        </div>
+    </div>
+    <div class="mdui-col">
+        <div class="mdui-card mdui-card-dense">
+            <div class="mdui-card-content">
+                <div class="mdui-text-color-orange mdui-text-caption">网络延迟</div>
+                <div class="mdui-text-headline" id="avgLatency">-</div>
+                <div class="mdui-text-caption">ms</div>
+            </div>
+        </div>
+    </div>
+    <div class="mdui-col">
+        <div class="mdui-card mdui-card-dense">
+            <div class="mdui-card-content">
+                <div class="mdui-text-color-red mdui-text-caption">丢包率</div>
+                <div class="mdui-text-headline" id="avgPacketLoss">-</div>
+                <div class="mdui-text-caption">%</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -88,6 +135,68 @@
 {%endblock%}
 
 {%block js%}
+<style>
+.server-card {
+    transition: all 0.3s ease;
+}
+
+.server-card:hover {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.chart-container {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.server-detail {
+    border-top: 1px solid #e0e0e0;
+}
+
+.server-metrics small {
+    color: #757575;
+    font-weight: 500;
+}
+
+.log-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.mdui-card-dense .mdui-card-content {
+    text-align: center;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
+.status-normal { background-color: #4CAF50; }
+.status-warning { background-color: #FF9800; }
+.status-error { background-color: #F44336; }
+.status-offline { background-color: #9E9E9E; }
+
+@media (max-width: 768px) {
+    .server-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .mdui-row-xs-2 .mdui-col,
+    .mdui-row-xs-1 .mdui-col {
+        margin-bottom: 8px;
+    }
+}
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 let globalChart = null;
@@ -187,36 +296,95 @@ function renderServersList(servers) {
         html += `
         <div class="mdui-card mt server-card" data-server-id="${server.sid}">
             <div class="mdui-card-primary">
-                <div class="mdui-card-primary-title">${server.name}</div>
-                <div class="mdui-card-primary-subtitle">
-                    <span class="server-status" data-server-id="${server.sid}">检查中...</span>
-                    <span style="float: right;">
-                        <button class="mdui-btn mdui-btn-dense mdui-color-theme-accent" 
-                                onclick="openPingConfig('${server.sid}')" 
-                                mdui-tooltip="{content:'配置监测'}">
-                            <i class="mdui-icon material-icons">settings</i>
-                        </button>
+                <div class="mdui-card-primary-title">
+                    <i class="mdui-icon material-icons">computer</i>
+                    ${server.name}
+                    <span class="server-location mdui-text-caption" style="margin-left: 8px; opacity: 0.7;">
+                        ${server.location || server.region || ''}
                     </span>
                 </div>
-            </div>
-            <div class="mdui-card-content">
-                <div class="mdui-row-xs-1 mdui-row-md-2">
-                    <div class="mdui-col">
-                        <canvas id="chart_${server.sid}_latency" width="300" height="150"></canvas>
-                    </div>
-                    <div class="mdui-col">
-                        <canvas id="chart_${server.sid}_loss" width="300" height="150"></canvas>
+                <div class="mdui-card-primary-subtitle">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span class="server-status" data-server-id="${server.sid}">
+                                <span class="mdui-chip mdui-chip-dense">
+                                    <span class="mdui-chip-icon mdui-color-grey">
+                                        <i class="mdui-icon material-icons">hourglass_empty</i>
+                                    </span>
+                                    <span class="mdui-chip-title">检查中...</span>
+                                </span>
+                            </span>
+                            <span class="server-metrics" id="metrics_${server.sid}" style="margin-left: 8px;"></span>
+                        </div>
+                        <div class="server-actions">
+                            <button class="mdui-btn mdui-btn-dense mdui-btn-outlined" 
+                                    onclick="toggleServerDetail('${server.sid}')" 
+                                    id="toggle_${server.sid}"
+                                    mdui-tooltip="{content:'展开/折叠详情'}">
+                                <i class="mdui-icon material-icons">expand_more</i>
+                            </button>
+                            <button class="mdui-btn mdui-btn-dense mdui-color-theme-accent" 
+                                    onclick="openPingConfig('${server.sid}')" 
+                                    mdui-tooltip="{content:'配置监测'}">
+                                <i class="mdui-icon material-icons">settings</i>
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="server-summary" id="summary_${server.sid}">
-                    <p>正在加载监测数据...</p>
+            </div>
+            <div class="mdui-card-content server-detail" id="detail_${server.sid}" style="display: none;">
+                <div class="mdui-tab" mdui-tab>
+                    <a href="#tab_${server.sid}_charts" class="mdui-ripple">趋势图表</a>
+                    <a href="#tab_${server.sid}_targets" class="mdui-ripple">监测目标</a>
+                    <a href="#tab_${server.sid}_history" class="mdui-ripple">历史记录</a>
+                </div>
+                
+                <div id="tab_${server.sid}_charts" class="mdui-p-a-2">
+                    <div class="mdui-row-xs-1 mdui-row-md-2">
+                        <div class="mdui-col">
+                            <div class="chart-container">
+                                <h4 class="mdui-text-caption mdui-text-center">延迟趋势</h4>
+                                <canvas id="chart_${server.sid}_latency" width="300" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="mdui-col">
+                            <div class="chart-container">
+                                <h4 class="mdui-text-caption mdui-text-center">丢包率趋势</h4>
+                                <canvas id="chart_${server.sid}_loss" width="300" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="tab_${server.sid}_targets" class="mdui-p-a-2">
+                    <div class="server-summary" id="summary_${server.sid}">
+                        <div class="mdui-text-center mdui-text-caption">正在加载监测数据...</div>
+                    </div>
+                </div>
+                
+                <div id="tab_${server.sid}_history" class="mdui-p-a-2">
+                    <div id="history_${server.sid}">
+                        <div class="mdui-text-center mdui-text-caption">正在加载历史记录...</div>
+                    </div>
                 </div>
             </div>
         </div>`;
     });
     
     if (html === '') {
-        html = '<p>暂无服务器数据</p>';
+        html = `
+        <div class="mdui-card mt">
+            <div class="mdui-card-content">
+                <div class="mdui-text-center">
+                    <i class="mdui-icon material-icons" style="font-size: 48px; color: #ccc;">cloud_off</i>
+                    <p class="mdui-text-caption">暂无服务器数据</p>
+                    <button class="mdui-btn mdui-color-theme-accent" onclick="refreshData()">
+                        <i class="mdui-icon material-icons">refresh</i>
+                        刷新数据
+                    </button>
+                </div>
+            </div>
+        </div>`;
     }
     
     document.getElementById('serversList').innerHTML = html;
@@ -227,6 +395,9 @@ async function loadAllMonitoringData(servers) {
     const hours = document.getElementById('timeRangeSelect').value;
     const globalData = [];
     const statusCounts = {normal: 0, warning: 0, error: 0, offline: 0};
+    let totalLatency = 0;
+    let totalLoss = 0;
+    let activeServers = 0;
     
     for (const server of servers) {
         try {
@@ -243,27 +414,51 @@ async function loadAllMonitoringData(servers) {
                     data: result.data
                 });
                 
-                // 计算状态
+                // 计算统计数据
                 const avgLoss = result.data.reduce((sum, item) => sum + (item.packet_loss || 0), 0) / result.data.length * 100;
+                const avgLatency = result.data.reduce((sum, item) => sum + (item.rtt_avg || 0), 0) / result.data.length;
+                
+                totalLatency += avgLatency;
+                totalLoss += avgLoss;
+                activeServers++;
+                
+                // 分类状态
                 if (avgLoss < 1) statusCounts.normal++;
                 else if (avgLoss < 5) statusCounts.warning++;
                 else statusCounts.error++;
                 
                 // 更新状态显示
-                updateServerStatus(server.sid, avgLoss);
+                updateServerStatus(server.sid, avgLoss, avgLatency);
             } else {
                 statusCounts.offline++;
-                updateServerStatus(server.sid, -1);
+                updateServerStatus(server.sid, -1, 0);
             }
         } catch (e) {
             statusCounts.offline++;
+            updateServerStatus(server.sid, -1, 0);
             console.error(`加载服务器 ${server.sid} 数据失败:`, e);
         }
     }
     
+    // 更新顶部统计卡片
+    updateGlobalStats(activeServers, statusCounts.normal, totalLatency / Math.max(activeServers, 1), totalLoss / Math.max(activeServers, 1));
+    
     // 更新全局图表
     updateGlobalChart(globalData);
     updateStatusChart(statusCounts);
+}
+
+// 更新全局统计数据
+function updateGlobalStats(activeServers, normalCount, avgLatency, avgLoss) {
+    const activeElement = document.getElementById('activeServersCount');
+    const normalElement = document.getElementById('normalCount');
+    const latencyElement = document.getElementById('avgLatency');
+    const lossElement = document.getElementById('avgPacketLoss');
+    
+    if (activeElement) activeElement.textContent = activeServers;
+    if (normalElement) normalElement.textContent = normalCount;
+    if (latencyElement) latencyElement.textContent = avgLatency > 0 ? avgLatency.toFixed(1) : '-';
+    if (lossElement) lossElement.textContent = avgLoss > 0 ? avgLoss.toFixed(1) : '-';
 }
 
 // 更新服务器图表
@@ -372,18 +567,100 @@ function updateServerChart(serverId, data) {
     updateServerSummary(serverId, targetData);
 }
 
+// 展开/折叠服务器详情
+function toggleServerDetail(serverId) {
+    const detailElement = document.getElementById(`detail_${serverId}`);
+    const toggleButton = document.getElementById(`toggle_${serverId}`);
+    const icon = toggleButton.querySelector('i');
+    
+    if (detailElement.style.display === 'none') {
+        detailElement.style.display = 'block';
+        icon.textContent = 'expand_less';
+        // 加载历史记录
+        loadServerHistory(serverId);
+    } else {
+        detailElement.style.display = 'none';
+        icon.textContent = 'expand_more';
+    }
+}
+
+// 打开监测目标管理器
+function openTargetManager() {
+    // 这里可以打开一个对话框来管理全局监测目标
+    mdui.dialog({
+        title: '监测目标管理',
+        content: '此功能正在开发中，请前往管理页面进行配置。',
+        buttons: [
+            {
+                text: '取消'
+            },
+            {
+                text: '前往管理',
+                bold: false,
+                close: false,
+                onClick: function(inst) {
+                    window.open('/admin/ping-targets', '_blank');
+                    inst.close();
+                }
+            }
+        ]
+    });
+}
+
+// 加载服务器历史记录
+async function loadServerHistory(serverId) {
+    const historyElement = document.getElementById(`history_${serverId}`);
+    
+    try {
+        const response = await fetch(`/api/servers/${serverId}/ping-data?hours=72&limit=50`);
+        const result = await response.json();
+        
+        if (result.status === 1 && result.data.length > 0) {
+            let html = '<div class="mdui-table-fluid"><table class="mdui-table mdui-table-dense">';
+            html += '<thead><tr><th>时间</th><th>目标</th><th>延迟</th><th>丢包率</th><th>状态</th></tr></thead><tbody>';
+            
+            result.data.slice(0, 20).forEach(item => {
+                const status = item.packet_loss > 0.1 ? 
+                    '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-red"><i class="mdui-icon material-icons">error</i></span></span>' :
+                    '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-green"><i class="mdui-icon material-icons">check</i></span></span>';
+                    
+                html += `<tr>
+                    <td>${new Date(item.timestamp).toLocaleString()}</td>
+                    <td>${item.name}</td>
+                    <td>${item.rtt_avg ? item.rtt_avg.toFixed(1) + 'ms' : '-'}</td>
+                    <td>${(item.packet_loss * 100).toFixed(1)}%</td>
+                    <td>${status}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            historyElement.innerHTML = html;
+        } else {
+            historyElement.innerHTML = '<div class="mdui-text-center mdui-text-caption">暂无历史记录</div>';
+        }
+    } catch (e) {
+        historyElement.innerHTML = '<div class="mdui-text-center mdui-text-caption">加载失败</div>';
+    }
+}
+
 // 更新服务器状态
-function updateServerStatus(serverId, avgLoss) {
+function updateServerStatus(serverId, avgLoss, avgLatency) {
     const statusElement = document.querySelector(`.server-status[data-server-id="${serverId}"]`);
+    const metricsElement = document.getElementById(`metrics_${serverId}`);
+    
     if (statusElement) {
         if (avgLoss === -1) {
             statusElement.innerHTML = '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-grey"><i class="mdui-icon material-icons">cloud_off</i></span><span class="mdui-chip-title">离线</span></span>';
+            if (metricsElement) metricsElement.innerHTML = '';
         } else if (avgLoss < 1) {
             statusElement.innerHTML = '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-green"><i class="mdui-icon material-icons">check_circle</i></span><span class="mdui-chip-title">正常</span></span>';
+            if (metricsElement) metricsElement.innerHTML = `<small>延迟: ${avgLatency.toFixed(1)}ms | 丢包: ${avgLoss.toFixed(1)}%</small>`;
         } else if (avgLoss < 5) {
             statusElement.innerHTML = '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-orange"><i class="mdui-icon material-icons">warning</i></span><span class="mdui-chip-title">警告</span></span>';
+            if (metricsElement) metricsElement.innerHTML = `<small>延迟: ${avgLatency.toFixed(1)}ms | 丢包: ${avgLoss.toFixed(1)}%</small>`;
         } else {
             statusElement.innerHTML = '<span class="mdui-chip mdui-chip-dense"><span class="mdui-chip-icon mdui-color-red"><i class="mdui-icon material-icons">error</i></span><span class="mdui-chip-title">异常</span></span>';
+            if (metricsElement) metricsElement.innerHTML = `<small>延迟: ${avgLatency.toFixed(1)}ms | 丢包: ${avgLoss.toFixed(1)}%</small>`;
         }
     }
 }
@@ -393,27 +670,79 @@ function updateServerSummary(serverId, targetData) {
     const summaryElement = document.getElementById(`summary_${serverId}`);
     if (!summaryElement) return;
     
-    let html = '<div class="mdui-row-xs-2 mdui-row-md-4">';
+    let html = '<div class="mdui-row-xs-1 mdui-row-md-2 mdui-row-lg-3">';
     
     Object.values(targetData).forEach(target => {
         if (target.data.length > 0) {
+            const latest = target.data[target.data.length - 1];
             const avgLatency = target.data.reduce((sum, item) => sum + (item.rtt_avg || 0), 0) / target.data.length;
             const avgLoss = target.data.reduce((sum, item) => sum + (item.packet_loss || 0), 0) / target.data.length * 100;
             
+            // 确定状态颜色
+            let statusColor = 'green';
+            let statusIcon = 'check_circle';
+            if (avgLoss > 10) {
+                statusColor = 'red';
+                statusIcon = 'error';
+            } else if (avgLoss > 1) {
+                statusColor = 'orange';
+                statusIcon = 'warning';
+            }
+            
             html += `
             <div class="mdui-col">
-                <div class="mdui-card mdui-card-dense">
-                    <div class="mdui-card-content">
-                        <div class="mdui-text-caption">${target.name}</div>
-                        <div class="mdui-text-headline">${avgLatency.toFixed(1)}ms</div>
-                        <div class="mdui-text-caption">丢包 ${avgLoss.toFixed(1)}%</div>
+                <div class="mdui-card mdui-card-dense mdui-hoverable" style="margin: 4px;">
+                    <div class="mdui-card-content" style="padding: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <div class="mdui-text-caption mdui-text-truncate" style="margin-bottom: 4px;">
+                                    <strong>${target.name}</strong>
+                                </div>
+                                <div class="mdui-text-caption" style="opacity: 0.7; font-size: 11px;">
+                                    ${target.data[0]?.address || ''}:${target.data[0]?.port || ''}
+                                </div>
+                            </div>
+                            <div>
+                                <span class="mdui-chip mdui-chip-dense">
+                                    <span class="mdui-chip-icon mdui-color-${statusColor}">
+                                        <i class="mdui-icon material-icons">${statusIcon}</i>
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <div class="mdui-row-xs-2">
+                                <div class="mdui-col">
+                                    <div class="mdui-text-headline" style="font-size: 18px; color: #2196F3;">
+                                        ${avgLatency.toFixed(1)}
+                                    </div>
+                                    <div class="mdui-text-caption" style="font-size: 10px;">延迟(ms)</div>
+                                </div>
+                                <div class="mdui-col">
+                                    <div class="mdui-text-headline" style="font-size: 18px; color: ${statusColor === 'green' ? '#4CAF50' : statusColor === 'orange' ? '#FF9800' : '#F44336'};">
+                                        ${avgLoss.toFixed(1)}%
+                                    </div>
+                                    <div class="mdui-text-caption" style="font-size: 10px;">丢包率</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee;">
+                            <div class="mdui-text-caption" style="font-size: 10px; opacity: 0.6;">
+                                最后更新: ${new Date(latest.timestamp).toLocaleTimeString()}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>`;
         }
     });
     
-    html += '</div>';
+    if (Object.keys(targetData).length === 0) {
+        html = '<div class="mdui-text-center mdui-text-caption">暂无监测目标配置</div>';
+    } else {
+        html += '</div>';
+    }
+    
     summaryElement.innerHTML = html;
 }
 
