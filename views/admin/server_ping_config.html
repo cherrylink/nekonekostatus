@@ -29,7 +29,7 @@
                     </thead>
                     <tbody>
                         {%for target in allTargets%}
-                        {%set config = configs.find(c => c.target_id == target.id)%}
+                        {%set config = configMap[target.id]%}
                         <tr>
                             <td>
                                 <label class="mdui-switch">

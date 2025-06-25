@@ -16,10 +16,17 @@ svr.get("/admin/servers/:sid/ping-config",(req,res)=>{
     const configs = db.server_ping_config.getByServer(sid);
     const allTargets = db.ping_targets.all();
     
+    // 为每个目标创建配置映射，方便模板使用
+    const configMap = {};
+    configs.forEach(config => {
+        configMap[config.target_id] = config;
+    });
+    
     res.render("admin/server_ping_config", {
         server: server,
         configs: configs,
-        allTargets: allTargets
+        allTargets: allTargets,
+        configMap: configMap
     });
 });
 
